@@ -46,6 +46,8 @@ class T2DMap : public QWidget
 {
     Q_OBJECT
 
+    Q_DISABLE_COPY(T2DMap)
+
 public:
     explicit T2DMap(QWidget* parent = 0);
     void paintMap();
@@ -61,12 +63,14 @@ public:
     void wheelEvent(QWheelEvent*) override;
     void mouseMoveEvent(QMouseEvent* event) override;
     void mouseReleaseEvent(QMouseEvent* e) override;
-    bool getCenterSelection();
+
     // Was getTopLeft() which returned an index into mMultiSelectionList but that
     // has been been changed to mMultiSelectionSet which cannot be accessed via
     // an index in the same way - this function now sets
     // mMultiSelectionHighlightRoomId and returns a (bool) on success or failure
     // to do so.
+    bool getCenterSelection();
+
     void setRoomSize(double);
     void setExitSize(double);
     void createLabel(QRectF labelRect);
@@ -80,7 +84,6 @@ public:
     QPoint mPHighlight;
     bool mPick;
     int mTarget;
-    //int      mRoomSelection;
     bool mStartSpeedWalk;
     QMap<int, QPoint> mAreaExitList;
 
@@ -149,8 +152,6 @@ public:
     bool isCenterViewCall;
     QString mHelpMsg;
 
-signals:
-
 public slots:
 
     void slot_roomSelectionChanged();
@@ -198,7 +199,6 @@ public slots:
 
 private:
     void resizeMultiSelectionWidget();
-
 
     bool mDialogLock;
 

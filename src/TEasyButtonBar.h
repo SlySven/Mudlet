@@ -39,18 +39,19 @@ class TEasyButtonBar : public QWidget
 {
     Q_OBJECT
 
+    Q_DISABLE_COPY(TEasyButtonBar)
+
 public:
-                     TEasyButtonBar( TAction *, QString, QWidget * pW = 0 );
-    void             addButton( TFlipButton * pW );
-    void             setVerticalOrientation(){ mVerticalOrientation = true; }
-    void             setHorizontalOrientation(){ mVerticalOrientation = false; }
-    void             clear();
-    void             finalize();
-    TAction *        mpTAction;
-    void             recordMove(){ mRecordMove = true; }
+    TEasyButtonBar(TAction*, QString, QWidget* pW = 0);
+    void addButton(TFlipButton* pW);
+    void setVerticalOrientation() { mVerticalOrientation = true; }
+    void setHorizontalOrientation() { mVerticalOrientation = false; }
+    void clear();
+    void finalize();
+    TAction* mpTAction;
+    void recordMove() { mRecordMove = true; }
 
-//private:
-
+private:
     bool mVerticalOrientation;
     QWidget* mpWidget;
     QString mName;
@@ -60,12 +61,8 @@ public:
     QWidget* mpBar;
     std::list<TFlipButton*> mButtonList;
 
-signals:
-
-
 public slots:
-
-    void            slot_pressed( const bool );
+    void slot_pressed(const bool);
 };
 
 #endif // MUDLET_TEASYBUTTONBAR_H

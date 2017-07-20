@@ -2,6 +2,14 @@
 --- Mudlet Unsorted Stuff
 ----------------------------------------------------------------------------------
 
+mudlet = mudlet or {}
+mudlet.supports = {
+  coroutines = true
+}
+
+-- enforce uniform locale so scripts don't get
+-- tripped up on number representation differences (. vs ,)
+os.setlocale("C")
 
 -- Extending default libraries makes Babelfish happy.
 setmetatable( _G, {
@@ -520,10 +528,10 @@ function getColorWildcard(color)
         for i = 0, string.len(line) do
                 selectSection(i, 1)
                 if isAnsiFgColor(color) then
-                        if not startc then 
+                        if not startc then
                                 startc = i + 1
                                 endc = i + 1
-                        else 
+                        else
                                 endc = i + 1
                                 if i == line:len() then
                                         results[#results + 1] = line:sub(startc, endc)
@@ -635,4 +643,60 @@ function shms(seconds, bool)
 	else
 		return hh, mm, ss
 	end
+end
+
+-- returns true if your Mudlet is older than the given version
+-- for example, it'll return true if you're on 2.1 and you do mudletOlderThan(3,1)
+-- it'll return false if you're on 4.0 and you do mudletOlderThan(4,0,0)
+function mudletOlderThan(inputmajor, inputminor, inputpatch)
+  local mudletmajor, mudletminor, mudletpatch = getMudletVersion("table")
+  local type, sformat = type, string.format
+
+  assert(type(inputmajor) == "number", sformat("bad argument #1 type (major version as number expected, got %s!)", type(inputmajor)))
+  assert(inputminor == nil or type(inputminor) == "number", sformat("bad argument #2 type (optional minor version as number expected, got %s!)", type(inputminor)))
+  assert(inputpatch == nil or type(inputpatch) == "number", sformat("bad argument #3 type (optional patch version as number expected, got %s!)", type(inputpatch)))
+
+
+  if mudletmajor < inputmajor then return true end
+  if inputminor and (mudletminor < inputminor) then return true end
+  if inputpatch and (mudletpatch < inputpatch) then return true end
+
+  return false
+end
+
+-- condendenses the output from map loading if no map load errors
+-- were encountered
+-- returns: the amount of time map loading took or nil+msg
+-- if it failed
+function condenseMapLoad()
+  local linestodelete
+  local startswith = string.starts
+
+  -- first, figure out how many lines back do we need to delete
+  -- this isn't a static amount due to line wrapping
+  for i = 1,30 do
+    moveCursor(0,getLineCount()-i)
+    local line = getCurrentLine()
+    if line:find("ALERT") or line:find("WARN") or line:find("ERROR") then
+      return nil, "an alert, warning, or error that the user must see is present"
+    elseif startswith(line, "[ INFO ]  - Reading map") then
+      linestodelete = i
+      moveCursorEnd()
+      break
+    end
+  end
+
+  if not linestodelete then
+    return nil, "couldn't find the starting line for map load output"
+  end
+
+  local loadtime = 0
+  for i = linestodelete, 1, -1 do
+    moveCursor(0,getLineCount()-i)
+    local time = getCurrentLine():match("([%.%d]+)s")
+    if time then loadtime = loadtime + tonumber(time) end
+    deleteLine()
+  end
+
+  return loadtime
 end

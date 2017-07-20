@@ -11,7 +11,7 @@ if [ "${Q_OR_C_MAKE}" = "qmake" ] && [ "${CC}" = "clang" ]; then
   ln -s "${TRAVIS_BUILD_DIR}" source
 
   if [ -z "${TRAVIS_TAG}" ]; then
-    appBaseName="Mudlet-${VERSION}${BUILD}"
+    appBaseName="Mudlet-${VERSION}${MUDLET_VERSION_BUILD}"
     mv "source/build/Mudlet.app" "source/build/${appBaseName}.app"
 
     bash make-installer.sh "${appBaseName}.app"
@@ -31,7 +31,8 @@ if [ "${Q_OR_C_MAKE}" = "qmake" ] && [ "${CC}" = "clang" ]; then
 
     mv "${HOME}/Desktop/Mudlet.dmg" "${HOME}/Desktop/Mudlet-${VERSION}.dmg"
 
-    DEPLOY_URL=$(scp -i /tmp/mudlet-deploy-key "${HOME}/Desktop/Mudlet-${VERSION}.dmg" "keneanung@mudlet.org:${DEPLOY_PATH}")
+    scp -i /tmp/mudlet-deploy-key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "${HOME}/Desktop/Mudlet-${VERSION}.dmg" "keneanung@mudlet.org:${DEPLOY_PATH}"
+    DEPLOY_URL="http://www.mudlet.org/wp-content/files/Mudlet-${VERSION}.dmg"
   fi
   export DEPLOY_URL
 fi

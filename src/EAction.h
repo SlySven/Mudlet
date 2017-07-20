@@ -36,17 +36,20 @@ class EAction : public QAction
 {
     Q_OBJECT
 
+    Q_DISABLE_COPY(EAction)
+
 public:
     EAction(QIcon&, QString&);
-
-    int mID;
-    QPointer<Host> mpHost;
 
 public slots:
     void slot_execute(bool checked);
 
 signals:
     void triggered(QAction*);
+
+public: // TODO: private:
+    int mID;
+    QPointer<Host> mpHost;
 };
 
 #endif // MUDLET_EACTION_H

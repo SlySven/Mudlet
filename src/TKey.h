@@ -43,7 +43,7 @@ public:
     TKey(QString name, Host* pHost);
     void compileAll();
     QString getName() { return mName; }
-    void setName(QString name) { mName = name; }
+    void setName(const QString & name);
     int getKeyCode() { return mKeyCode; }
     void setKeyCode(int code) { mKeyCode = code; }
     int getKeyModifiers() { return mKeyModifier; }
@@ -57,10 +57,10 @@ public:
     bool setScript(QString& script);
     void setCommand(QString command) { mCommand = command; }
     QString getCommand() { return mCommand; }
-    bool isFolder() { return mIsFolder; }
-    void setIsFolder(bool b) { mIsFolder = b; }
+
     bool match(int, int);
     bool registerKey();
+
     //bool             serialize( QDataStream & );
     //bool             restore( QDataStream & fs, bool );
     bool exportItem;
@@ -85,7 +85,6 @@ private:
     QRegExp mRegex;
     QString mScript;
     QString mFuncName;
-    bool mIsFolder;
     QPointer<Host> mpHost;
     bool mNeedsToBeCompiled;
     bool mModuleMember;

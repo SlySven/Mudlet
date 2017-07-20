@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>744</width>
-    <height>663</height>
+    <width>742</width>
+    <height>616</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -20,10 +20,10 @@
    <string>Profile preferences</string>
   </property>
   <property name="windowIcon">
-   <iconset resource="../mudlet_alpha.qrc">
+   <iconset resource="../mudlet.qrc">
     <normaloff>:/icons/mudlet_configure.png</normaloff>:/icons/mudlet_configure.png</iconset>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout_3">
+  <layout class="QVBoxLayout" name="verticalLayout_2">
    <item>
     <widget class="QTabWidget" name="tabWidgeta">
      <property name="enabled">
@@ -55,6 +55,19 @@
        <string>General</string>
       </attribute>
       <layout class="QGridLayout" name="gridLayout_19">
+       <item row="5" column="0">
+        <spacer name="verticalSpacer_8">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
        <item row="0" column="0">
         <widget class="QGroupBox" name="groupBox_11">
          <property name="sizePolicy">
@@ -134,6 +147,28 @@
         </widget>
        </item>
        <item row="1" column="0">
+        <widget class="QGroupBox" name="groupBox_encoding">
+         <property name="enabled">
+          <bool>true</bool>
+         </property>
+         <property name="title">
+          <string>Server data encoding</string>
+         </property>
+         <layout class="QVBoxLayout" name="verticalLayout_7">
+          <item>
+           <widget class="QComboBox" name="comboBox_encoding">
+            <property name="enabled">
+             <bool>true</bool>
+            </property>
+            <property name="toolTip">
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;If you are playing a non-English MUD and seeing � instead of text, or special letters like &lt;span style=&quot; font-weight:600;&quot;&gt;ñ&lt;/span&gt; aren't showing right - try changing the encoding to UTF-8 or to one suggested by your MUD.&lt;/p&gt;&lt;p&gt;Note: While this will allow Mudlet to show text in other languages, internalisation is still in development so triggers or Lua code won't work yet.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item row="2" column="0">
         <widget class="QGroupBox" name="groupBox_2">
          <property name="title">
           <string>Misc</string>
@@ -160,6 +195,13 @@
             </property>
             <property name="text">
              <string>Save log files in HTML format instead of plain text</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="mIsLoggingTimestamps">
+            <property name="text">
+             <string>Add timestamps at the beginning of log lines</string>
             </property>
            </widget>
           </item>
@@ -224,40 +266,6 @@
            </widget>
           </item>
          </layout>
-        </widget>
-       </item>
-       <item row="6" column="0">
-        <spacer name="verticalSpacer_8">
-         <property name="orientation">
-          <enum>Qt::Vertical</enum>
-         </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>20</width>
-           <height>40</height>
-          </size>
-         </property>
-        </spacer>
-       </item>
-       <item row="4" column="0">
-        <widget class="QGroupBox" name="groupBox_16">
-         <property name="title">
-          <string>IRC</string>
-         </property>
-         <layout class="QHBoxLayout" name="horizontalLayout_4">
-          <item>
-           <widget class="QLabel" name="label_58">
-            <property name="text">
-             <string>Nickname in Mudlet IRC channel:</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLineEdit" name="ircNick"/>
-          </item>
-         </layout>
-         <zorder>ircNick</zorder>
-         <zorder>label_58</zorder>
         </widget>
        </item>
       </layout>
@@ -338,6 +346,9 @@
            <widget class="QLineEdit" name="command_separator_lineedit">
             <property name="enabled">
              <bool>true</bool>
+            </property>
+            <property name="placeholderText">
+             <string>Enter text to separate commands with or leave blank to disable</string>
             </property>
            </widget>
           </item>
@@ -545,6 +556,9 @@
               <height>16777215</height>
              </size>
             </property>
+            <property name="toolTip">
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Extra space to have before text on top - can be set to negative to move text up beyond the screen&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
             <property name="text">
              <string>Top border height:</string>
             </property>
@@ -558,11 +572,14 @@
               <verstretch>0</verstretch>
              </sizepolicy>
             </property>
+            <property name="toolTip">
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Extra space to have before text on top - can be set to negative to move text up beyond the screen&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
             <property name="minimum">
-             <number>0</number>
+             <number>-1000000</number>
             </property>
             <property name="maximum">
-             <number>2000</number>
+             <number>1000000</number>
             </property>
             <property name="value">
              <number>0</number>
@@ -583,6 +600,9 @@
               <height>16777215</height>
              </size>
             </property>
+            <property name="toolTip">
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Extra space to have before text on the left - can be set to negative to move text left beyond the screen&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
             <property name="text">
              <string>Left border width:</string>
             </property>
@@ -596,11 +616,14 @@
               <verstretch>0</verstretch>
              </sizepolicy>
             </property>
+            <property name="toolTip">
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Extra space to have before text on the left - can be set to negative to move text left beyond the screen&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
             <property name="minimum">
-             <number>0</number>
+             <number>-1000000</number>
             </property>
             <property name="maximum">
-             <number>2000</number>
+             <number>1000000</number>
             </property>
             <property name="value">
              <number>0</number>
@@ -621,6 +644,9 @@
               <height>16777215</height>
              </size>
             </property>
+            <property name="toolTip">
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Extra space to have before text on the bottom - can be set to negative to allow text to go down beyond the screen&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
             <property name="text">
              <string>Bottom border height:</string>
             </property>
@@ -634,11 +660,14 @@
               <verstretch>0</verstretch>
              </sizepolicy>
             </property>
+            <property name="toolTip">
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Extra space to have before text on the bottom - can be set to negative to allow text to go down beyond the screen&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
             <property name="minimum">
-             <number>0</number>
+             <number>-1000000</number>
             </property>
             <property name="maximum">
-             <number>2000</number>
+             <number>1000000</number>
             </property>
             <property name="value">
              <number>0</number>
@@ -659,6 +688,9 @@
               <height>16777215</height>
              </size>
             </property>
+            <property name="toolTip">
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Extra space to have before text on the right - can be set to negative to move text right beyond the screen&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
             <property name="text">
              <string>Right border width:</string>
             </property>
@@ -672,11 +704,14 @@
               <verstretch>0</verstretch>
              </sizepolicy>
             </property>
+            <property name="toolTip">
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Extra space to have before text on the right - can be set to negative to move text right beyond the screen&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
             <property name="minimum">
-             <number>0</number>
+             <number>-1000000</number>
             </property>
             <property name="maximum">
-             <number>2000</number>
+             <number>1000000</number>
             </property>
             <property name="value">
              <number>0</number>
@@ -712,13 +747,6 @@
           <string>Display options</string>
          </property>
          <layout class="QGridLayout" name="gridLayout_10">
-          <item row="1" column="2">
-           <widget class="QComboBox" name="comboBox_statusBarSetting">
-            <property name="toolTip">
-             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;For some actions - particularly those involving a &lt;i&gt;context menu&lt;/i&gt; (mouse &amp;quot;right-click&amp;quot; action) Mudlet can put up hints about the currently selected action before it is activated on a status bar at the bottom of the screen. By default this is &lt;i&gt;off&lt;/i&gt; (never shown), even when there is soemthing to display. For use on &amp;quot;full-size&amp;quot; Computers you may wish to change this setting to (always) &lt;i&gt;on&lt;/i&gt; but for those with limited space on their screen they will probably want to keep it turned off perminently or only have it set to &lt;i&gt;auto&lt;/i&gt; so it only pop-ups when there is something to show.&lt;/p&gt;&lt;p&gt;This setting controls that feature, the choice made will be remembered between sessions, and it applies to all profiles.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-            </property>
-           </widget>
-          </item>
           <item row="0" column="0">
            <widget class="QCheckBox" name="checkBox_USE_IRE_DRIVER_BUGFIX">
             <property name="toolTip">
@@ -736,16 +764,6 @@
             </property>
             <property name="text">
              <string>Show Spaces/Tabs</string>
-            </property>
-           </widget>
-          </item>
-          <item row="0" column="2">
-           <widget class="QLabel" name="label_statusBarSetting">
-            <property name="text">
-             <string>Status Bar:</string>
-            </property>
-            <property name="buddy">
-             <cstring>comboBox_statusBarSetting</cstring>
             </property>
            </widget>
           </item>
@@ -895,6 +913,107 @@
           </item>
          </layout>
         </widget>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="code_editor_tab">
+      <attribute name="title">
+       <string>Editor</string>
+      </attribute>
+      <layout class="QGridLayout" name="gridLayout_26">
+       <item row="0" column="0">
+        <widget class="QGroupBox" name="code_editor_theme_selection_groupbox">
+         <property name="title">
+          <string>Theme</string>
+         </property>
+         <layout class="QGridLayout" name="gridLayout_25">
+          <item row="0" column="0">
+           <widget class="QFrame" name="frame_3">
+            <property name="minimumSize">
+             <size>
+              <width>500</width>
+              <height>100</height>
+             </size>
+            </property>
+            <property name="frameShape">
+             <enum>QFrame::StyledPanel</enum>
+            </property>
+            <property name="frameShadow">
+             <enum>QFrame::Raised</enum>
+            </property>
+            <layout class="QGridLayout" name="gridLayout_27">
+             <property name="leftMargin">
+              <number>0</number>
+             </property>
+             <property name="topMargin">
+              <number>0</number>
+             </property>
+             <property name="rightMargin">
+              <number>0</number>
+             </property>
+             <property name="bottomMargin">
+              <number>0</number>
+             </property>
+             <property name="spacing">
+              <number>0</number>
+             </property>
+             <item row="0" column="0">
+              <widget class="edbee::TextEditorWidget" name="edbeePreviewWidget" native="true">
+               <property name="font">
+                <font>
+                 <family>Bitstream Vera Sans Mono</family>
+                </font>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <layout class="QHBoxLayout" name="horizontalLayout_8" stretch="2,1">
+            <item>
+             <widget class="QComboBox" name="code_editor_theme_selection_combobox">
+              <property name="editable">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QComboBox" name="script_preview_combobox">
+              <property name="editable">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item row="2" column="0">
+           <widget class="QLabel" name="theme_download_label">
+            <property name="font">
+             <font>
+              <pointsize>8</pointsize>
+             </font>
+            </property>
+            <property name="text">
+             <string>Updating themes from colorsublime.com...</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item row="1" column="0">
+        <spacer name="verticalSpacer_5">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
        </item>
       </layout>
      </widget>
@@ -1421,6 +1540,19 @@
             </property>
            </widget>
           </item>
+          <item row="1" column="0">
+           <widget class="QCheckBox" name="checkBox_showDefaultArea">
+            <property name="toolTip">
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The default area (area id -1) is used by some mapper scripts as a temporary 'holding area' for rooms before they're placed in the correct area&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
+            <property name="text">
+             <string>Show the default area in map area selection</string>
+            </property>
+            <property name="checked">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
          </layout>
         </widget>
        </item>
@@ -1540,6 +1672,43 @@
             <property name="text">
              <string>Report map issues on screen</string>
             </property>
+           </widget>
+          </item>
+          <item row="5" column="0">
+           <widget class="QLabel" name="label_mapFileSaveFormatVersion">
+            <property name="text">
+             <string>Map format version:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="5" column="1">
+           <widget class="QComboBox" name="comboBox_mapFileSaveFormatVersion">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>250</width>
+              <height>16777215</height>
+             </size>
+            </property>
+            <property name="toolTip">
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Change this to a lower version if you need to save your map in a format that can be read by older versions of Mudlet. Doing so will lose the extra data available in the current map format&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
+            <property name="editable">
+             <bool>false</bool>
+            </property>
+            <property name="currentText">
+             <string># {default version}</string>
+            </property>
+            <item>
+             <property name="text">
+              <string># {default version}</string>
+             </property>
+            </item>
            </widget>
           </item>
          </layout>
@@ -1970,7 +2139,174 @@
          </layout>
         </widget>
        </item>
+       <item row="1" column="0">
+        <widget class="QGroupBox" name="groupIrcConfig">
+         <property name="title">
+          <string>IRC client options</string>
+         </property>
+         <layout class="QGridLayout" name="gridLayout_28" rowstretch="0,0,0,0" columnstretch="1,1,1,2">
+          <item row="0" column="0">
+           <widget class="QWidget" name="ircHostNameWidget" native="true">
+            <layout class="QHBoxLayout" name="horizontalLayout_13">
+             <property name="spacing">
+              <number>1</number>
+             </property>
+             <property name="leftMargin">
+              <number>1</number>
+             </property>
+             <property name="topMargin">
+              <number>1</number>
+             </property>
+             <property name="rightMargin">
+              <number>1</number>
+             </property>
+             <property name="bottomMargin">
+              <number>1</number>
+             </property>
+             <item>
+              <widget class="QLabel" name="lblIrcHostName">
+               <property name="text">
+                <string>Server address:</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QLineEdit" name="ircHostName">
+            <property name="inputMethodHints">
+             <set>Qt::ImhUrlCharactersOnly</set>
+            </property>
+            <property name="placeholderText">
+             <string>irc.example.net</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="2">
+           <widget class="QLabel" name="lblIrcHostPort">
+            <property name="text">
+             <string>Port:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="3">
+           <widget class="QLineEdit" name="ircHostPort">
+            <property name="inputMethodHints">
+             <set>Qt::ImhDigitsOnly</set>
+            </property>
+            <property name="placeholderText">
+             <string>6667</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QWidget" name="ircHostPortWidget" native="true">
+            <layout class="QHBoxLayout" name="horizontalLayout_14">
+             <property name="spacing">
+              <number>1</number>
+             </property>
+             <property name="leftMargin">
+              <number>1</number>
+             </property>
+             <property name="topMargin">
+              <number>1</number>
+             </property>
+             <property name="rightMargin">
+              <number>1</number>
+             </property>
+             <property name="bottomMargin">
+              <number>1</number>
+             </property>
+             <item>
+              <widget class="QLabel" name="lblIrcNick">
+               <property name="text">
+                <string>Nickname:</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QLineEdit" name="ircNick">
+            <property name="placeholderText">
+             <string>MudletUser123</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="2">
+           <widget class="QLabel" name="lblIrcChannels">
+            <property name="text">
+             <string>Auto-join channels: </string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="3">
+           <widget class="QLineEdit" name="ircChannels">
+            <property name="placeholderText">
+             <string>#channel1 #channel2 #etc...</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QWidget" name="ircNickWidget" native="true">
+            <layout class="QHBoxLayout" name="horizontalLayout_15">
+             <property name="spacing">
+              <number>1</number>
+             </property>
+             <property name="leftMargin">
+              <number>1</number>
+             </property>
+             <property name="topMargin">
+              <number>1</number>
+             </property>
+             <property name="rightMargin">
+              <number>1</number>
+             </property>
+             <property name="bottomMargin">
+              <number>1</number>
+             </property>
+            </layout>
+           </widget>
+          </item>
+          <item row="3" column="0" colspan="2">
+           <widget class="QWidget" name="ircChannelsWidget" native="true">
+            <layout class="QHBoxLayout" name="horizontalLayout_16">
+             <property name="spacing">
+              <number>1</number>
+             </property>
+             <property name="leftMargin">
+              <number>1</number>
+             </property>
+             <property name="topMargin">
+              <number>1</number>
+             </property>
+             <property name="rightMargin">
+              <number>1</number>
+             </property>
+             <property name="bottomMargin">
+              <number>1</number>
+             </property>
+            </layout>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
        <item row="2" column="0">
+        <widget class="QGroupBox" name="groupBox_Debug">
+         <property name="title">
+          <string>Other Special options</string>
+         </property>
+         <layout class="QFormLayout" name="formLayout_Debug">
+          <property name="labelAlignment">
+           <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+          </property>
+         </layout>
+        </widget>
+       </item>
+       <item row="3" column="0">
         <spacer name="verticalSpacer_6">
          <property name="orientation">
           <enum>Qt::Vertical</enum>
@@ -1982,62 +2318,6 @@
           </size>
          </property>
         </spacer>
-       </item>
-       <item row="1" column="0">
-        <widget class="QGroupBox" name="groupBox_Debug">
-         <property name="title">
-          <string>Other Special options</string>
-         </property>
-         <layout class="QFormLayout" name="formLayout_Debug">
-          <property name="labelAlignment">
-           <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-          </property>
-          <item row="0" column="0">
-           <widget class="QLabel" name="label_mapFileSaveFormatVersion">
-            <property name="text">
-             <string>Override map file format version:</string>
-            </property>
-            <property name="alignment">
-             <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-            </property>
-           </widget>
-          </item>
-          <item row="0" column="1">
-           <widget class="QComboBox" name="comboBox_mapFileSaveFormatVersion">
-            <property name="maximumSize">
-             <size>
-              <width>200</width>
-              <height>16777215</height>
-             </size>
-            </property>
-            <property name="toolTip">
-             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Mudlet&lt;/span&gt; is a project.that is under active development. 8-)&lt;/p&gt;&lt;p&gt;As such, when new features are added, it is sometimes necessary to change what information is stored between sessions.&lt;/p&gt;&lt;p&gt;To allow new features to be incorporated the developers will need to test when that extra data is part of the map data files that Mudlet uses and this control allows them to temporarily change what is written out as part of the map file.&lt;/p&gt;&lt;p&gt;It is not recommended to change this setting to be &lt;b&gt;&lt;i&gt;above&lt;/i&gt;&lt;/b&gt; the &lt;i&gt;default&lt;/i&gt; unless you know why you want to do so as the files that are produced may not be readable by other versions that you or others might have if you do have multiple versions installed (e.g. for testing) or you share your maps with others; also, if there is a defect in the new code you may experence data loss!&lt;/p&gt;&lt;p&gt;Conversely selecting a version &lt;b&gt;&lt;i&gt;below&lt;/i&gt;&lt;/b&gt; the &lt;i&gt;default&lt;/i&gt; may cause data loss and would not normally be recommend &lt;u&gt;unless you need to fall back by one version so that you CAN share map files with others who have not &lt;i&gt;yet&lt;/i&gt; updated to a freshly released version&lt;/u&gt;.&lt;/p&gt;&lt;p&gt;In short - do not mess with this unless you know what the effects wil be.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-            </property>
-            <property name="editable">
-             <bool>false</bool>
-            </property>
-            <property name="currentText">
-             <string># {default version}</string>
-            </property>
-            <item>
-             <property name="text">
-              <string># {default version}</string>
-             </property>
-            </item>
-           </widget>
-          </item>
-          <item row="1" column="0" colspan="2">
-           <widget class="QCheckBox" name="checkBox_showDefaultArea">
-            <property name="text">
-             <string>Show (-1) area {this message should have been overwritten by initialisation code - report if not!}</string>
-            </property>
-            <property name="checked">
-             <bool>true</bool>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </widget>
        </item>
       </layout>
      </widget>
@@ -2087,12 +2367,20 @@
    </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>edbee::TextEditorWidget</class>
+   <extends>QWidget</extends>
+   <header location="global">edbee/texteditorwidget.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
  <tabstops>
   <tabstop>show_sent_text_checkbox</tabstop>
   <tabstop>command_separator_lineedit</tabstop>
  </tabstops>
  <resources>
-  <include location="../mudlet_alpha.qrc"/>
+  <include location="../mudlet.qrc"/>
  </resources>
  <connections/>
 </ui>

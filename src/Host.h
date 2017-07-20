@@ -4,7 +4,7 @@
 /***************************************************************************
  *   Copyright (C) 2008-2013 by Heiko Koehn - KoehnHeiko@googlemail.com    *
  *   Copyright (C) 2014 by Ahmed Charles - acharles@outlook.com            *
- *   Copyright (C) 2015-2016 by Stephen Lyons - slysven@virginmedia.com    *
+ *   Copyright (C) 2015-2017 by Stephen Lyons - slysven@virginmedia.com    *
  *   Copyright (C) 2016 by Ian Adkins - ieadkins@gmail.com                 *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -42,6 +42,7 @@
 #include "post_guard.h"
 
 class QDialog;
+class QDockWidget;
 class QPushButton;
 class QListWidget;
 
@@ -81,78 +82,106 @@ public:
     void               setRetries( int c )              { QMutexLocker locker(& mLock); mRetries=c; }
     int                getTimeout()                     { QMutexLocker locker(& mLock); return mTimeout; }
     void               setTimeout( int seconds )        { QMutexLocker locker(& mLock); mTimeout=seconds; }
-    bool               closingDown();
+
+    void closingDown();
+    bool isClosingDown();
     const unsigned int assemblePath();
-    const bool         checkForMappingScript();
-    TriggerUnit *      getTriggerUnit()                 { return & mTriggerUnit; }
-    TimerUnit *        getTimerUnit()                   { return & mTimerUnit; }
-    AliasUnit *        getAliasUnit()                   { return & mAliasUnit; }
-    ActionUnit *       getActionUnit()                  { return & mActionUnit; }
-    KeyUnit *          getKeyUnit()                     { return & mKeyUnit; }
-    ScriptUnit *       getScriptUnit()                  { return & mScriptUnit; }
-    void               connectToServer();
-    void               send( QString cmd, bool wantPrint = true, bool dontExpandAliases = false );
-    void               sendRaw( QString s );
-    int                getHostID() { QMutexLocker locker(& mLock); return mHostID; }
-    void               setHostID( int id ) { QMutexLocker locker(& mLock); mHostID = id; }
-    TLuaInterpreter *  getLuaInterpreter() { return & mLuaInterpreter; }
-    LuaInterface *     getLuaInterface() { return mLuaInterface.data(); }
-    void               incomingStreamProcessor(const QString & paragraph, int line );
-    void               postIrcMessage(const QString&, const QString&, const QString& );
-    void               enableTimer(const QString & );
-    void               disableTimer(const QString & );
-    void               enableTrigger(const QString & );
-    void               disableTrigger(const QString & );
-    void               enableKey(const QString & );
-    void               disableKey(const QString & );
-    bool               killTimer(const QString & );
-    bool               killTrigger(const QString & );
-    double             stopStopWatch( int );
-    bool               resetStopWatch( int );
-    bool               startStopWatch( int );
-    double             getStopWatchTime( int );
-    int                createStopWatch();
-    void               startSpeedWalk();
-    //QStringList        getBufferTable( int, int );
-    //QString            getBufferLine( int );
-    void               saveModules(int);
-    void               reloadModule(const QString& moduleName);
-    bool               blockScripts() { return mBlockScriptCompile; }
+    const bool checkForMappingScript();
 
-    void               setIsAutologin( bool b ){ mIsAutologin = b; }
-    bool               isAutologin(){ return mIsAutologin; }
-    void               setReplacementCommand(const QString& );
-    void               registerEventHandler(const QString&, TScript * );
-    void               registerAnonymousEventHandler(const QString& name, const QString& fun );
-    void               unregisterEventHandler(const QString&, TScript * );
-    void               raiseEvent( const TEvent & event );
-    void               resetProfile();
-    void               callEventHandlers();
-    void               stopAllTriggers();
-    void               reenableAllTriggers();
-    void               set_USE_IRE_DRIVER_BUGFIX( bool b ){ mUSE_IRE_DRIVER_BUGFIX = b; mTelnet.set_USE_IRE_DRIVER_BUGFIX( b ); }
-    void               set_LF_ON_GA( bool b ){ mLF_ON_GA = b; mTelnet.set_LF_ON_GA( b ); }
-    void               adjustNAWS();
-    class              Exception_NoLogin{};
-    class              Exception_NoConnectionAvailable{};
+    TriggerUnit* getTriggerUnit() { return &mTriggerUnit; }
+    TimerUnit* getTimerUnit() { return &mTimerUnit; }
+    AliasUnit* getAliasUnit() { return &mAliasUnit; }
+    ActionUnit* getActionUnit() { return &mActionUnit; }
+    KeyUnit* getKeyUnit() { return &mKeyUnit; }
+    ScriptUnit* getScriptUnit() { return &mScriptUnit; }
 
-    bool                installPackage(const QString&, int);
-    bool                uninstallPackage(const QString&, int);
-    bool                removeDir(const QString&, const QString&);
-    void                readPackageConfig(const QString&, QString &);
-    void                postMessage(const QString message) { mTelnet.postMessage(message); }
+    void connectToServer();
+    void send(QString cmd, bool wantPrint = true, bool dontExpandAliases = false);
+    void sendRaw(QString s);
+
+    int getHostID()
+    {
+        QMutexLocker locker(&mLock);
+        return mHostID;
+    }
+
+    void setHostID(int id)
+    {
+        QMutexLocker locker(&mLock);
+        mHostID = id;
+    }
+
+    TLuaInterpreter* getLuaInterpreter() { return &mLuaInterpreter; }
+    LuaInterface* getLuaInterface() { return mLuaInterface.data(); }
+
+    void incomingStreamProcessor(const QString& paragraph, int line);
+    void postIrcMessage(const QString&, const QString&, const QString&);
+    void enableTimer(const QString&);
+    void disableTimer(const QString&);
+    void enableTrigger(const QString&);
+    void disableTrigger(const QString&);
+    void enableKey(const QString&);
+    void disableKey(const QString&);
+    bool killTimer(const QString&);
+    bool killTrigger(const QString&);
+    double stopStopWatch(int);
+    bool resetStopWatch(int);
+    bool startStopWatch(int);
+    double getStopWatchTime(int);
+    int createStopWatch();
+    void startSpeedWalk();
+    void saveModules(int);
+    void reloadModule(const QString& moduleName);
+    bool blockScripts() { return mBlockScriptCompile; }
+
+    void setIsAutologin(bool b) { mIsAutologin = b; }
+    bool isAutologin() { return mIsAutologin; }
+    void setReplacementCommand(const QString&);
+    void registerEventHandler(const QString&, TScript*);
+    void registerAnonymousEventHandler(const QString& name, const QString& fun);
+    void unregisterEventHandler(const QString&, TScript*);
+    void raiseEvent(const TEvent& event);
+    void resetProfile();
+    std::tuple<bool, QString, QString> saveProfile(const QString& saveLocation = QString(), bool syncModules = false);
+    void callEventHandlers();
+    void stopAllTriggers();
+    void reenableAllTriggers();
+
+    void set_USE_IRE_DRIVER_BUGFIX(bool b)
+    {
+        mUSE_IRE_DRIVER_BUGFIX = b;
+        mTelnet.set_USE_IRE_DRIVER_BUGFIX(b);
+    }
+
+    void set_LF_ON_GA(bool b)
+    {
+        mLF_ON_GA = b;
+        mTelnet.set_LF_ON_GA(b);
+    }
+
+    void adjustNAWS();
+
+    class Exception_NoLogin
+    {
+    };
+
+    class Exception_NoConnectionAvailable
+    {
+    };
 
 
+    bool installPackage(const QString&, int);
+    bool uninstallPackage(const QString&, int);
+    bool removeDir(const QString&, const QString&);
+    void readPackageConfig(const QString&, QString&);
+    void postMessage(const QString message) { mTelnet.postMessage(message); }
+    QPair<bool, QString> writeProfileData(const QString &, const QString &);
+    QString readProfileData(const QString &);
+
+public:
     cTelnet mTelnet;
     QPointer<TConsole> mpConsole;
     TLuaInterpreter mLuaInterpreter;
-    QScopedPointer<LuaInterface> mLuaInterface;
-    TriggerUnit mTriggerUnit;
-    TimerUnit mTimerUnit;
-    ScriptUnit mScriptUnit;
-    AliasUnit mAliasUnit;
-    ActionUnit mActionUnit;
-    KeyUnit mKeyUnit;
 
     int commandLineMinimumHeight;
     bool mAlertOnNewData;
@@ -164,77 +193,45 @@ public:
     int mBorderLeftWidth;
     int mBorderRightWidth;
     int mBorderTopHeight;
-    QString mBufferIncomingData;
-    bool mCodeCompletion;
     QFont mCommandLineFont;
     QString mCommandSeparator;
-    bool mDisableAutoCompletion;
     QFont mDisplayFont;
     bool mEnableGMCP;
     bool mEnableMSDP;
-    int mEncoding;
     QTextStream mErrorLogStream;
-    QFile mErrorLogFile;
     QMap<QString, QList<TScript*>> mEventHandlerMap;
-    QMap<QString, TEvent*> mEventMap;
     bool mFORCE_GA_OFF;
     bool mFORCE_NO_COMPRESSION;
     bool mFORCE_SAVE_ON_EXIT;
-    int mHostID;
-    QString mHostName;
     bool mInsertedMissingLF;
-    bool mIsAutologin;
     bool mIsGoingDown;
     bool mIsProfileLoadingSequence;
 
-    bool mIsClosingDown;
     bool mLF_ON_GA;
-    QString mLine;
-    QMutex mLock;
-    QString mLogin;
-    int mMainIconSize;
-    QString mMudOutputBuffer;
-    int mMXPMode;
     bool mNoAntiAlias;
 
-    QString mPass;
     dlgTriggerEditor* mpEditorDialog;
     QScopedPointer<TMap> mpMap;
     dlgNotepad* mpNotePad;
-    QStringList mParagraphList;
 
-    int mPort;
     bool mPrintCommand;
-    QString mPrompt;
 
-    // The following was incorrectly called mRawStreamDump
-    // and caused the log file to be in HTML format rather
-    // then plain text.  To cover the corner case of the user
-    // changing the mode whilst a log is being written it has
-    // been split into:
-    bool mIsNextLogFileInHtmlFormat;
-
-    // What the user has set as their preference
+    // To cover the corner case of the user changing the mode
+    // whilst a log is being written, this stores the mode of
+    // the current log file and is set from
+    // mIsNextLogFileInHtmlFormat at the point that a log is started.
     bool mIsCurrentLogFileInHtmlFormat;
 
-    // What the current file will use, set from the previous
-    // member at the point that logging starts.
-    // Ideally this ought to become a number so that we can
-    // support more than two logging format modes - phpBB
-    // format would be useful for those wanting to post to
-    // MUD forums...!  Problem will be reading and write the
-    // game save file in a compatible way.
-    QString mReplacementCommand;
+    // To cover the corner case of the user changing the mode
+    // whilst a log is being written, this stores the mode of
+    // future logs file as set in the profile preferences. See
+    // also mIsCurrentLogFileInHtmlFormat.
+    bool mIsNextLogFileInHtmlFormat;
 
-    QString mRest;
+    bool mIsLoggingTimestamps;
     bool mResetProfile;
-    int mRetries;
-    bool mSaveProfileOnExit;
     int mScreenHeight;
     int mScreenWidth;
-    bool mShowToolbar;
-    int mTEFolderIconSize;
-    QStringList mTextBufferList;
 
     int mTimeout;
 
@@ -243,9 +240,22 @@ public:
     bool mUSE_FORCE_LF_AFTER_PROMPT;
     bool mUSE_IRE_DRIVER_BUGFIX;
     bool mUSE_UNIX_EOL;
-    QString mUserDefinedName;
     int mWrapAt;
     int mWrapIndentCount;
+
+    // code editor theme (human-friendly name)
+    QString mEditorTheme;
+    // code editor theme file on disk for edbee to load
+    QString mEditorThemeFile;
+
+    // trigger/alias/script/etc ID whose Lua code to show when previewing a theme
+    // remembering this value to show what the user has selected does have its
+    // flaws in case of items getting created/deleted, but this is just a
+    // convenience feature and if it gets the item wrong, it's no worse
+    // than the feature not being there.
+    int mThemePreviewItemID;
+    // the type of item (a trigger, an alias, etc) that's previewed
+    QString mThemePreviewType;
 
     QColor mBlack;
     QColor mLightBlack;
@@ -268,8 +278,6 @@ public:
     QColor mCommandBgColor;
     QColor mCommandFgColor;
 
-    QMap<int, QTime> mStopWatchMap;
-
     QColor mBlack_2;
     QColor mLightBlack_2;
     QColor mRed_2;
@@ -290,26 +298,15 @@ public:
     QColor mBgColor_2;
     bool mMapStrongHighlight;
     QStringList mGMCP_merge_table_keys;
-    QMap<QString, QStringList> mAnonymousEventHandlerFunctions;
     QString mSpellDic;
     bool mLogStatus;
     bool mEnableSpellCheck;
-    QString mIRCNick;
     QStringList mInstalledPackages;
     QMap<QString, QStringList> mInstalledModules;
     QMap<QString, int> mModulePriorities;
     QMap<QString, QStringList> modulesToWrite;
     QMap<QString, QMap<QString, QString>> moduleHelp;
-    QStringList mActiveModules;
-    bool mModuleSaveBlock;
 
-    // There was a QDialog *          mpUnzipDialog; but to avoid issues of
-    // reentrancy it needed to be made local to the method that used it.
-    QPushButton* uninstallButton;
-    QListWidget* packageList;
-    QListWidget* moduleList;
-    QPushButton* moduleUninstallButton;
-    QPushButton* moduleInstallButton;
     double mLineSize;
     double mRoomSize;
     bool mShowInfo;
@@ -323,8 +320,73 @@ public:
     QColor mCommandLineBgColor;
     bool mMapperUseAntiAlias;
     bool mFORCE_MXP_NEGOTIATION_OFF;
-    bool mHaveMapperScript;
     QSet<QChar> mDoubleClickIgnore;
+    QPointer<QDockWidget> mpDockableMapWidget;
+
+private:
+    QScopedPointer<LuaInterface> mLuaInterface;
+
+    TriggerUnit mTriggerUnit;
+    TimerUnit mTimerUnit;
+    ScriptUnit mScriptUnit;
+    AliasUnit mAliasUnit;
+    ActionUnit mActionUnit;
+    KeyUnit mKeyUnit;
+
+    QString mBufferIncomingData;
+    bool mCodeCompletion;
+
+    bool mDisableAutoCompletion;
+    QFile mErrorLogFile;
+
+    QMap<QString, TEvent*> mEventMap;
+
+    int mHostID;
+    QString mHostName;
+
+    bool mIsAutologin;
+
+    bool mIsClosingDown;
+
+    QString mLine;
+    QMutex mLock;
+    QString mLogin;
+    int mMainIconSize;
+    QString mMudOutputBuffer;
+    int mMXPMode;
+
+    QString mPass;
+    QStringList mParagraphList;
+
+    int mPort;
+    QString mPrompt;
+
+    QString mReplacementCommand;
+
+    QString mRest;
+
+    int mRetries;
+    bool mSaveProfileOnExit;
+    bool mShowToolbar;
+    int mTEFolderIconSize;
+    QStringList mTextBufferList;
+
+    QString mUserDefinedName;
+
+    QMap<int, QTime> mStopWatchMap;
+
+    QMap<QString, QStringList> mAnonymousEventHandlerFunctions;
+
+    QStringList mActiveModules;
+    bool mModuleSaveBlock;
+
+    QPushButton* uninstallButton;
+    QListWidget* packageList;
+    QListWidget* moduleList;
+    QPushButton* moduleUninstallButton;
+    QPushButton* moduleInstallButton;
+
+    bool mHaveMapperScript;
 };
 
 #endif // MUDLET_HOST_H

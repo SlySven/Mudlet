@@ -36,6 +36,8 @@ class GLWidget : public QGLWidget
 {
     Q_OBJECT
 
+    Q_DISABLE_COPY(GLWidget)
+
 public:
     GLWidget(QWidget* parent = 0);
     GLWidget(TMap* pM, QWidget* parent = 0);
@@ -43,22 +45,10 @@ public:
     void wheelEvent(QWheelEvent* e) override;
     void setViewCenter(int, int, int, int);
 
-    bool is2DView;
-
     QSize minimumSizeHint() const override;
     QSize sizeHint() const override;
 
-    int mRID;
-    int mAID;
-    int mOx;
-    int mOy;
-    int mOz;
-    bool mShiftMode;
-    bool mShowInfo;
-
-
 public slots:
-
     void showInfo();
     void shiftUp();
     void shiftDown();
@@ -101,6 +91,19 @@ protected:
     void mouseReleaseEvent(QMouseEvent* event) override;
 
 public:
+    TMap* mpMap;
+
+private:
+    bool is2DView;
+
+    int mRID;
+    int mAID;
+    int mOx;
+    int mOy;
+    int mOz;
+    bool mShiftMode;
+    bool mShowInfo;
+
     float xRot;
     float yRot;
     float zRot;
@@ -116,7 +119,6 @@ public:
 
     GLfloat rotTri, rotQuad;
     float mScale;
-    TMap* mpMap;
     int mTarget;
     QPointer<Host> mpHost;
     QMap<int, int> mQuads;
