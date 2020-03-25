@@ -58,9 +58,8 @@ public:
     void drawForeground(QPainter&, const QRect&);
     void drawBackground(QPainter&, const QRect&, const QColor&) const;
     uint getGraphemeBaseCharacter(const QString& str) const;
-    void drawLine(QPainter& painter, int lineNumber, int rowOfScreen) const;
-    int drawGrapheme(QPainter &painter, const QPoint &cursor, const QString &c, int column, TChar &style) const;
-    void drawCharacters(QPainter&, const QRect&, QString&, const QColor&, const TChar::AttributeFlags);
+    void drawLine(QPainter& painter, int lineNumber, int rowOfScreen);
+    int drawGrapheme(QPainter&, const QPoint&, const QString &, int, TChar&);
     void showNewLines();
     void forceUpdate();
     void needUpdate(int, int);
@@ -107,6 +106,13 @@ public:
     int mWrapAt;
     int mWrapIndentCount {};
     qreal mLetterSpacing;
+    // Initially set to QFontMetrics::averageCharWidth():
+    int mGlyphWidth;
+    // The largest width of a glyph divided by the number of characters it is
+    // supposed to be wide. If, after painting this is greater than the spacing
+    // used (mGlyphWidth) then everything is painted again with mGlyphWidth
+    // increased to this figure:
+    int mMaxNormalisedGlyphWidth;
 
 public slots:
     void slot_toggleTimeStamps(const bool);
@@ -128,7 +134,7 @@ private:
     static QString htmlCenter(const QString&);
     static QString convertWhitespaceToVisual(const QChar& first, const QChar& second = QChar::Null);
     static QString byteToLuaCodeOrChar(const char*);
-    std::pair<bool, int> drawTextForClipboard(QPainter& p, QRect r, int lineOffset) const;
+    std::pair<bool, int> drawTextForClipboard(QPainter& p, QRect r, int lineOffset);
     int convertMouseXToBufferX(const int mouseX, const int lineNumber, bool *isOverTimeStamp = nullptr) const;
     int getGraphemeWidth(uint unicode) const;
     void normaliseSelection();

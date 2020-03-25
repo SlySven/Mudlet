@@ -212,7 +212,6 @@ public:
     int mBatchDeleteSize;
     int mWrapAt;
     int mWrapIndent;
-
     int mCursorY;
 
     /*
