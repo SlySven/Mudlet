@@ -197,6 +197,8 @@ public:
     // is apparently incompatible with using a default constructor - sigh!
     void encodingChanged(const QString &);
     static int lengthInGraphemes(const QString& text);
+    // Mark EVERY line as dirty so that they (ought) to be repainted:
+    void dirtyAll();
 
 
     std::deque<TChar> bufferLine;

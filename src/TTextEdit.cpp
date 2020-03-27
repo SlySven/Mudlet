@@ -54,6 +54,7 @@ TTextEdit::TTextEdit(TConsole* pC, QWidget* pW, TBuffer* pB, Host* pH, bool isLo
 , mIsCommandPopup(false)
 , mIsTailMode(true)
 , mShowTimeStamps(false)
+, mMaxNormalisedGlyphWidth(1)
 , mForceUpdate(false)
 , mIsLowerPane(isLowerPane)
 , mLastRenderBottom(0)
@@ -79,17 +80,17 @@ TTextEdit::TTextEdit(TConsole* pC, QWidget* pW, TBuffer* pB, Host* pH, bool isLo
         }
 
         mpHost->setDisplayFontFixedPitch(true);
-#if defined(Q_OS_MACOS) || defined(Q_OS_LINUX)
-        QPixmap pixmap = QPixmap(mScreenWidth * mGlyphWidth * 2, mFontHeight * 2);
-        QPainter p(&pixmap);
-        p.setFont(hostFont);
-        const QRectF r = QRectF(0, 0, mScreenWidth * mGlyphWidth * 2, mFontHeight * 2);
-        QRectF r2;
-        const QString t = "1234";
-        p.drawText(r, 1, t, &r2);
-        mLetterSpacing = static_cast<qreal>(mGlyphWidth) - static_cast<qreal>(r2.width() / t.size());
-        mpHost->setDisplayFontSpacing(mLetterSpacing);
-#endif
+//#if defined(Q_OS_MACOS) || defined(Q_OS_LINUX)
+//        QPixmap pixmap = QPixmap(mScreenWidth * mGlyphWidth * 2, mFontHeight * 2);
+//        QPainter p(&pixmap);
+//        p.setFont(hostFont);
+//        const QRectF r = QRectF(0, 0, mScreenWidth * mGlyphWidth * 2, mFontHeight * 2);
+//        QRectF r2;
+//        const QString t = "1234";
+//        p.drawText(r, 1, t, &r2);
+//        mLetterSpacing = static_cast<qreal>(mGlyphWidth) - static_cast<qreal>(r2.width() / t.size());
+//        mpHost->setDisplayFontSpacing(mLetterSpacing);
+//#endif
         setFont(hostFont);
     } else {
         // This is part of the Central Debug Console
@@ -99,17 +100,17 @@ TTextEdit::TTextEdit(TConsole* pC, QWidget* pW, TBuffer* pB, Host* pH, bool isLo
         mGlyphWidth = mFontWidth;
         mScreenWidth = 100;
         mDisplayFont.setFixedPitch(true);
-#if defined(Q_OS_MACOS) || defined(Q_OS_LINUX)
-        QPixmap pixmap = QPixmap(mScreenWidth * mGlyphWidth * 2, mFontHeight * 2);
-        QPainter p(&pixmap);
-        p.setFont(mDisplayFont);
-        const QRectF r = QRectF(0, 0, mScreenWidth * mGlyphWidth * 2, mFontHeight * 2);
-        QRectF r2;
-        const QString t = "1234";
-        p.drawText(r, 1, t, &r2);
-        mLetterSpacing = static_cast<qreal>(mGlyphWidth) - static_cast<int>(r2.width() / t.size());
-        mDisplayFont.setLetterSpacing(QFont::AbsoluteSpacing, mLetterSpacing);
-#endif
+//#if defined(Q_OS_MACOS) || defined(Q_OS_LINUX)
+//        QPixmap pixmap = QPixmap(mScreenWidth * mGlyphWidth * 2, mFontHeight * 2);
+//        QPainter p(&pixmap);
+//        p.setFont(mDisplayFont);
+//        const QRectF r = QRectF(0, 0, mScreenWidth * mGlyphWidth * 2, mFontHeight * 2);
+//        QRectF r2;
+//        const QString t = "1234";
+//        p.drawText(r, 1, t, &r2);
+//        mLetterSpacing = static_cast<qreal>(mGlyphWidth) - static_cast<int>(r2.width() / t.size());
+//        mDisplayFont.setLetterSpacing(QFont::AbsoluteSpacing, mLetterSpacing);
+//#endif
         setFont(mDisplayFont);
         // initialize after mFontHeight and mFontWidth have been set, because the function uses them!
         initDefaultSettings();
@@ -154,7 +155,7 @@ void TTextEdit::needUpdate(int y1, int y2)
         return;
     }
 
-    if (mScreenHeight == 0) {
+    if (!mScreenHeight) {
         return;
     }
     int top = imageTopLine();
@@ -204,24 +205,25 @@ void TTextEdit::initDefaultSettings()
     mFgColor = QColor(192, 192, 192);
     mBgColor = QColor(Qt::black);
     mDisplayFont = QFont(QStringLiteral("Bitstream Vera Sans Mono"), 14, QFont::Normal);
-#if defined(Q_OS_MACOS) || defined(Q_OS_LINUX)
-    int width = mScreenWidth * mGlyphWidth * 2;
-    int height = mFontHeight * 2;
-    // sometimes mScreenWidth is 0, and QPainter doesn't like dimensions of 0x#. Need to work out why is
-    // mScreenWidth ever zero and it gets used in the follow calculations.
-    if (width > 0 && height > 0) {
-        QPixmap pixmap = QPixmap(width, height);
-        QPainter p(&pixmap);
-        p.setFont(mDisplayFont);
-        const QRectF r = QRectF(0, 0, width, height);
-        QRectF r2;
-        const QString t = "1234";
-        p.drawText(r, 1, t, &r2);
-        mLetterSpacing = static_cast<qreal>(mGlyphWidth) - static_cast<qreal>(r2.width() / t.size());
-        mDisplayFont.setLetterSpacing(QFont::AbsoluteSpacing, mLetterSpacing);
-    }
-#endif
-    mDisplayFont.setLetterSpacing(QFont::AbsoluteSpacing, mLetterSpacing);
+//#if defined(Q_OS_MACOS) || defined(Q_OS_LINUX)
+//    int width = mScreenWidth * mGlyphWidth * 2;
+//    int height = mFontHeight * 2;
+//    // sometimes mScreenWidth is 0, and QPainter doesn't like dimensions of 0x#. Need to work out why is
+//    // mScreenWidth ever zero and it gets used in the follow calculations.
+//    if (width > 0 && height > 0) {
+//        QPixmap pixmap = QPixmap(width, height);
+//        QPainter p(&pixmap);
+//        p.setFont(mDisplayFont);
+//        const QRectF r = QRectF(0, 0, width, height);
+//        QRectF r2;
+//        const QString t = "1234";
+//        p.drawText(r, 1, t, &r2);
+//        mLetterSpacing = static_cast<qreal>(mGlyphWidth) - static_cast<qreal>(r2.width() / t.size());
+//        mDisplayFont.setLetterSpacing(QFont::AbsoluteSpacing, mLetterSpacing);
+//    }
+//#endif
+
+//    mDisplayFont.setLetterSpacing(QFont::AbsoluteSpacing, mLetterSpacing);
     mDisplayFont.setFixedPitch(true);
     setFont(mDisplayFont);
     mWrapAt = 100;
@@ -236,73 +238,77 @@ void TTextEdit::updateScreenView()
         mFontDescent = QFontMetrics(mDisplayFont).descent();
         mFontAscent = QFontMetrics(mDisplayFont).ascent();
         mFontHeight = mFontAscent + mFontDescent;
-#if defined(Q_OS_MACOS) || defined(Q_OS_LINUX)
-        QPixmap pixmap = QPixmap(2000, 600);
-        QPainter p(&pixmap);
-        mDisplayFont.setLetterSpacing(QFont::AbsoluteSpacing, 0);
-        if (!p.isActive()) {
-            return;
-        }
-        p.setFont(mDisplayFont);
-        const QRectF r = QRectF(0, 0, 2000, 600);
-        QRectF r2;
-        const QString t = "1234";
-        p.drawText(r, 1, t, &r2);
-        mLetterSpacing = static_cast<qreal>(mGlyphWidth) - static_cast<qreal>(r2.width() / t.size());
-        mDisplayFont.setLetterSpacing(QFont::AbsoluteSpacing, mLetterSpacing);
-#endif
+//#if defined(Q_OS_MACOS) || defined(Q_OS_LINUX)
+//        QPixmap pixmap = QPixmap(2000, 600);
+//        QPainter p(&pixmap);
+//        mDisplayFont.setLetterSpacing(QFont::AbsoluteSpacing, 0);
+//        if (!p.isActive()) {
+//            return;
+//        }
+//        p.setFont(mDisplayFont);
+//        const QRectF r = QRectF(0, 0, 2000, 600);
+//        QRectF r2;
+//        const QString t = "1234";
+//        p.drawText(r, 1, t, &r2);
+//        mLetterSpacing = static_cast<qreal>(mGlyphWidth) - static_cast<qreal>(r2.width() / t.size());
+//        mDisplayFont.setLetterSpacing(QFont::AbsoluteSpacing, mLetterSpacing);
+//#endif
         return; //NOTE: das ist wichtig, damit ich keine floating point exception bekomme, wenn mScreenHeight==0, was hier der Fall wäre
     }
     // This was "if (pC->mType == TConsole::MainConsole) {"
     // and mIsMiniConsole is true for user created Mini Consoles and User Windows
     if (mpConsole->getType() == TConsole::MainConsole) {
         mFontWidth = QFontMetrics(mpHost->getDisplayFont()).averageCharWidth();
-        mGlyphWidth = mFontWidth;
+        if (mGlyphWidth < mFontWidth) {
+            mGlyphWidth = mFontWidth;
+        }
         mFontDescent = QFontMetrics(mpHost->getDisplayFont()).descent();
         mFontAscent = QFontMetrics(mpHost->getDisplayFont()).ascent();
         mFontHeight = mFontAscent + mFontDescent;
         mBgColor = mpHost->mBgColor;
         mFgColor = mpHost->mFgColor;
-#if defined(Q_OS_MACOS) || defined(Q_OS_LINUX)
-        QPixmap pixmap = QPixmap(mScreenWidth * mGlyphWidth * 2, mFontHeight * 2);
-        QPainter p(&pixmap);
-        mpHost->setDisplayFontSpacing(0);
-        if (p.isActive()) {
-            p.setFont(mpHost->getDisplayFont());
-            const QRectF r = QRectF(0, 0, mScreenWidth * mGlyphWidth * 2, mFontHeight * 2);
-            QRectF r2;
-            const QString t = "1234";
-            p.drawText(r, 1, t, &r2);
-            mLetterSpacing = static_cast<qreal>(mGlyphWidth) - static_cast<qreal>(r2.width() / t.size());
-            mpHost->setDisplayFontSpacing(mLetterSpacing);
-        }
-#endif
+//#if defined(Q_OS_MACOS) || defined(Q_OS_LINUX)
+//        QPixmap pixmap = QPixmap(mScreenWidth * mGlyphWidth * 2, mFontHeight * 2);
+//        QPainter p(&pixmap);
+//        mpHost->setDisplayFontSpacing(0);
+//        if (p.isActive()) {
+//            p.setFont(mpHost->getDisplayFont());
+//            const QRectF r = QRectF(0, 0, mScreenWidth * mGlyphWidth * 2, mFontHeight * 2);
+//            QRectF r2;
+//            const QString t = "1234";
+//            p.drawText(r, 1, t, &r2);
+//            mLetterSpacing = static_cast<qreal>(mGlyphWidth) - static_cast<qreal>(r2.width() / t.size());
+//            mpHost->setDisplayFontSpacing(mLetterSpacing);
+//        }
+//#endif
     } else {
         mFontWidth = QFontMetrics(mDisplayFont).averageCharWidth();
-        mGlyphWidth = mFontWidth;
+        if (mGlyphWidth < mFontWidth) {
+            mGlyphWidth = mFontWidth;
+        }
         mFontDescent = QFontMetrics(mDisplayFont).descent();
         mFontAscent = QFontMetrics(mDisplayFont).ascent();
         mFontHeight = mFontAscent + mFontDescent;
-#if defined(Q_OS_MACOS) || defined(Q_OS_LINUX)
-        int width = mScreenWidth * mGlyphWidth * 2;
-        int height = mFontHeight * 2;
-        // sometimes mScreenWidth is 0, and QPainter doesn't like dimensions of 0x#. Need to work out why is
-        // mScreenWidth ever zero and it gets used in the follow calculations.
-        if (width > 0 && height > 0) {
-            QPixmap pixmap = QPixmap(width, height);
-            QPainter p(&pixmap);
-            mDisplayFont.setLetterSpacing(QFont::AbsoluteSpacing, 0);
-            if (p.isActive()) {
-                p.setFont(mDisplayFont);
-                const QRectF r = QRectF(0, 0, width, height);
-                QRectF r2;
-                const QString t = "1234";
-                p.drawText(r, 1, t, &r2);
-                mLetterSpacing = static_cast<qreal>(mGlyphWidth) - static_cast<qreal>(r2.width() / t.size());
-                mDisplayFont.setLetterSpacing(QFont::AbsoluteSpacing, mLetterSpacing);
-            }
-        }
-#endif
+//#if defined(Q_OS_MACOS) || defined(Q_OS_LINUX)
+//        int width = mScreenWidth * mGlyphWidth * 2;
+//        int height = mFontHeight * 2;
+//        // sometimes mScreenWidth is 0, and QPainter doesn't like dimensions of 0x#. Need to work out why is
+//        // mScreenWidth ever zero and it gets used in the follow calculations.
+//        if (width > 0 && height > 0) {
+//            QPixmap pixmap = QPixmap(width, height);
+//            QPainter p(&pixmap);
+//            mDisplayFont.setLetterSpacing(QFont::AbsoluteSpacing, 0);
+//            if (p.isActive()) {
+//                p.setFont(mDisplayFont);
+//                const QRectF r = QRectF(0, 0, width, height);
+//                QRectF r2;
+//                const QString t = "1234";
+//                p.drawText(r, 1, t, &r2);
+//                mLetterSpacing = static_cast<qreal>(mGlyphWidth) - static_cast<qreal>(r2.width() / t.size());
+//                mDisplayFont.setLetterSpacing(QFont::AbsoluteSpacing, mLetterSpacing);
+//            }
+//        }
+//#endif
     }
     mScreenHeight = visibleRegion().boundingRect().height() / mFontHeight;
     int currentScreenWidth = visibleRegion().boundingRect().width() / mGlyphWidth;
@@ -482,6 +488,9 @@ void TTextEdit::drawLine(QPainter& painter, int lineNumber, int lineOfScreen)
  */
 int TTextEdit::drawGrapheme(QPainter& painter, const QPoint& cursor, const QString& grapheme, int column, TChar& charStyle)
 {
+    static bool glyphOutline = true;
+    static bool usedOutline = false;
+
     uint unicode = getGraphemeBaseCharacter(grapheme);
     int charWidth;
     if (unicode == '\t') {
@@ -508,9 +517,9 @@ int TTextEdit::drawGrapheme(QPainter& painter, const QPoint& cursor, const QStri
         font.setOverline(isOverline);
         font.setStrikeOut(isStrikeOut);
         font.setUnderline(isUnderline);
-#if defined(Q_OS_MACOS) || defined(Q_OS_LINUX)
-        font.setLetterSpacing(QFont::AbsoluteSpacing, mLetterSpacing);
-#endif
+//#if defined(Q_OS_MACOS) || defined(Q_OS_LINUX)
+//        font.setLetterSpacing(QFont::AbsoluteSpacing, mLetterSpacing);
+//#endif
         painter.setFont(font);
     }
 
@@ -531,8 +540,29 @@ int TTextEdit::drawGrapheme(QPainter& painter, const QPoint& cursor, const QStri
         painter.setPen(fgColor);
     }
 
+    QColor outlineColor{QColor(std::rand()%256,std::rand()%256,std::rand()%256)};
     QRect boundaryRect;
+    if (glyphOutline) {
+        painter.save();
+        QPen pen{painter.pen()};
+        painter.setBrush(Qt::NoBrush);
+        pen.setColor(outlineColor);
+        pen.setStyle(Qt::DotLine);
+        painter.setPen(pen);
+        painter.drawRect(textRect);
+        painter.restore();
+    }
     painter.drawText(textRect, Qt::AlignCenter, grapheme, &boundaryRect);
+    if (usedOutline) {
+        painter.save();
+        QPen pen{painter.pen()};
+        painter.setBrush(Qt::NoBrush);
+        pen.setColor(outlineColor);
+        pen.setStyle(Qt::SolidLine);
+        painter.setPen(pen);
+        painter.drawRect(boundaryRect);
+        painter.restore();
+    }
     double normalisedCharacterWidth = boundaryRect.width() / static_cast<double>(charWidth);
     if (mMaxNormalisedGlyphWidth < qRound(normalisedCharacterWidth)) {
         qDebug().noquote().nospace() << "TTextEdit::drawGrapheme(...) INFO - glyph: '" << grapheme << "' has a normalised width of: " << normalisedCharacterWidth << " which, when rounded is greater than current maximum of: " << mMaxNormalisedGlyphWidth << ", so incrementing the latter to match.";
@@ -669,13 +699,12 @@ void TTextEdit::drawForeground(QPainter& painter, const QRect& r)
             mpBuffer->dirty[lineOffset + i] = false;
             drawLine(p, i + lineOffset, i);
         }
-        isRedrawNecessary = (mMaxNormalisedGlyphWidth < mGlyphWidth);
+        isRedrawNecessary = (mGlyphWidth < mMaxNormalisedGlyphWidth);
         if (isRedrawNecessary) {
+            qDebug().noquote().nospace() << "TTextEdit::drawForeground(...) INFO - mGlyphWidth: " << mGlyphWidth << " is smaller than: " << mMaxNormalisedGlyphWidth << " so incrementing the former.";
             // Oh dear, the largest glyph is wider than the width we assumed
             // so we will have to invalidate the WHOLE buffer and redraw it:
-            for (auto& line : mpBuffer->dirty) {
-                line = true;
-            }
+            mpBuffer->dirtyAll();
             mGlyphWidth = mMaxNormalisedGlyphWidth;
         }
     } while (isRedrawNecessary);
@@ -687,7 +716,10 @@ void TTextEdit::drawForeground(QPainter& painter, const QRect& r)
     }
     mScrollVector = 0;
     mLastRenderBottom = lineOffset;
-    mForceUpdate = false;
+    if (!isRedrawNecessary) {
+        // Don't stop the redraw if we need it because the glyphs are too big:
+        mForceUpdate = false;
+    }
 }
 
 void TTextEdit::paintEvent(QPaintEvent* e)

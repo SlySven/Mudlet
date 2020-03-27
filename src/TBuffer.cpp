@@ -5176,3 +5176,10 @@ int TBuffer::lengthInGraphemes(const QString& text)
     }
     return count;
 }
+
+void TBuffer::dirtyAll()
+{
+    for (auto& line : dirty) {
+        line = true;
+    }
+}

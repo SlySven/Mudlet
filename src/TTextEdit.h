@@ -105,7 +105,7 @@ public:
     bool mShowTimeStamps;
     int mWrapAt;
     int mWrapIndentCount {};
-    qreal mLetterSpacing;
+//    qreal mLetterSpacing;
     // Initially set to QFontMetrics::averageCharWidth():
     int mGlyphWidth;
     // The largest width of a glyph divided by the number of characters it is
