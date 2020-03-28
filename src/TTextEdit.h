@@ -186,6 +186,11 @@ private:
     // would only be valid to change this by clearing the buffer first - so
     // making this a const value for the moment:
     const int mTimeStampWidth;
+
+    // Temporary for debugging:
+    // Key is grapheme, value.first is width of boundary rectangle from painter
+    // Value.second is character width from getGraphemeWidth(...)
+    QMap<QString, QPair<quint8, quint8>> mGraphemeWidthsMap;
 };
 
 #endif // MUDLET_TTEXTEDIT_H

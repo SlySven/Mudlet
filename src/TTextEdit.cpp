@@ -490,8 +490,10 @@ int TTextEdit::drawGrapheme(QPainter& painter, const QPoint& cursor, const QStri
 {
     static bool glyphOutline = true;
     static bool usedOutline = false;
+    static bool storeGlyphWidths = false;
 
     uint unicode = getGraphemeBaseCharacter(grapheme);
+    QPair<quint8, quint8> graphemeWidthDetail;
     int charWidth;
     if (unicode == '\t') {
         charWidth = mTabStopwidth - (column % mTabStopwidth);
@@ -564,6 +566,11 @@ int TTextEdit::drawGrapheme(QPainter& painter, const QPoint& cursor, const QStri
         painter.restore();
     }
     double normalisedCharacterWidth = boundaryRect.width() / static_cast<double>(charWidth);
+    if (storeGlyphWidths && unicode != '\t') {
+        graphemeWidthDetail.first = boundaryRect.width();
+        graphemeWidthDetail.second = charWidth;
+        mGraphemeWidthsMap.insert(grapheme, graphemeWidthDetail);
+    }
     if (mMaxNormalisedGlyphWidth < qRound(normalisedCharacterWidth)) {
         qDebug().noquote().nospace() << "TTextEdit::drawGrapheme(...) INFO - glyph: '" << grapheme << "' has a normalised width of: " << normalisedCharacterWidth << " which, when rounded is greater than current maximum of: " << mMaxNormalisedGlyphWidth << ", so incrementing the latter to match.";
         mMaxNormalisedGlyphWidth = qRound(normalisedCharacterWidth);
@@ -724,6 +731,7 @@ void TTextEdit::drawForeground(QPainter& painter, const QRect& r)
 
 void TTextEdit::paintEvent(QPaintEvent* e)
 {
+    static bool dumpMap = false;
     const QRect& rect = e->rect();
 
     if (mFontWidth <= 0 || mFontHeight <= 0) {
@@ -743,11 +751,29 @@ void TTextEdit::paintEvent(QPaintEvent* e)
         return;
     }
 
+    qDebug().nospace().noquote() << "TTextEdit::paintEvent() INFO - running for " << ( mIsLowerPane ? "lower" : "upper") << " pane of \"" << mpConsole->mConsoleName << "\".";
     QRect borderRect = QRect(0, mScreenHeight * mFontHeight, rect.width(), rect.height());
     drawBackground(painter, borderRect, mBgColor);
     QRect borderRect2 = QRect(rect.width() - mScreenWidth, 0, rect.width(), rect.height());
     drawBackground(painter, borderRect2, mBgColor);
     drawForeground(painter, rect);
+    if (mIsLowerPane) {
+        qDebug().nospace().noquote() << "TTextEdit::paintEvent() INFO - end of running for lower pane of \"" << mpConsole->mConsoleName << "\".";
+    } else {
+        qDebug().nospace().noquote() << "TTextEdit::paintEvent() INFO - end of running for upper pane of \"" << mpConsole->mConsoleName << "\".";
+    }
+    if (dumpMap) {
+        QMapIterator<QString, QPair<quint8, quint8>> itGrapheme(mGraphemeWidthsMap);
+        qDebug().nospace().noquote() << "Used Width|Char Width|String";
+        qDebug().nospace().noquote() << "----------+----------+------";
+        while (itGrapheme.hasNext()) {
+            itGrapheme.next();
+            qDebug().nospace().noquote() << QStringLiteral("    %1    |     %2   | \"%3\"").arg(itGrapheme.value().first, 2, 10).arg(itGrapheme.value().second, 2, 10).arg(itGrapheme.key());
+        }
+        if (mIsLowerPane) {
+            dumpMap = false;
+        }
+    }
 }
 
 // highlights the currently selected text.
