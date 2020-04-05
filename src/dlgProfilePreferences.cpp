@@ -665,7 +665,7 @@ void dlgProfilePreferences::initWithHost(Host* pHost)
 
     show_sent_text_checkbox->setChecked(pHost->mPrintCommand);
     auto_clear_input_line_checkbox->setChecked(pHost->mAutoClearCommandLineAfterSend);
-    command_separator_lineedit->setText(pHost->mCommandSeparator);
+    command_separator_lineedit->setText(pHost->getCommandSeparator());
 
     checkBox_USE_IRE_DRIVER_BUGFIX->setChecked(pHost->mUSE_IRE_DRIVER_BUGFIX);
     //this option is changed into a forced option for GA enabled drivers as triggers wont run on prompt lines otherwise
@@ -2373,7 +2373,7 @@ void dlgProfilePreferences::slot_save_and_exit()
         pHost->mWrapIndentCount = indent_wrapped_spinBox->value();
         pHost->mPrintCommand = show_sent_text_checkbox->isChecked();
         pHost->mAutoClearCommandLineAfterSend = auto_clear_input_line_checkbox->isChecked();
-        pHost->mCommandSeparator = command_separator_lineedit->text();
+        pHost->setCommandSeparator(command_separator_lineedit->text());
         pHost->mAcceptServerGUI = acceptServerGUI->isChecked();
         pHost->mAcceptServerMedia = acceptServerMedia->isChecked();
         pHost->mUSE_IRE_DRIVER_BUGFIX = checkBox_USE_IRE_DRIVER_BUGFIX->isChecked();

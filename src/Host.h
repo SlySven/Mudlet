@@ -40,6 +40,7 @@
 #include <QColor>
 #include <QFile>
 #include <QFont>
+#include <QReadWriteLock>
 #include <QPointer>
 #include <QTextStream>
 #include "post_guard.h"
@@ -131,7 +132,7 @@ class Host : public QObject
     friend class dlgProfilePreferences;
 
 public:
-    Host(int port, const QString& mHostName, const QString& login, const QString& pass, int host_id);
+    Host(int port, const QString& hostName, const QString& login, const QString& pass, int host_id);
     ~Host();
 
     enum DiscordOptionFlag {
@@ -150,72 +151,63 @@ public:
     Q_DECLARE_FLAGS(DiscordOptionFlags, DiscordOptionFlag)
 
 
-    QString            getName()                        { QMutexLocker locker(& mLock); return mHostName; }
-    QString            getCommandSeparator()            { QMutexLocker locker(& mLock); return mCommandSeparator; }
-    void               setName(const QString& s );
-    QString            getUrl()                         { QMutexLocker locker(& mLock); return mUrl; }
-    void               setUrl(const QString& s )        { QMutexLocker locker(& mLock); mUrl = s; }
-    QString            getUserDefinedName()             { QMutexLocker locker(& mLock); return mUserDefinedName; }
-    void               setUserDefinedName(const QString& s ) { QMutexLocker locker(& mLock); mUserDefinedName = s; }
-    int                getPort()                        { QMutexLocker locker(& mLock); return mPort; }
-    void               setPort( int p )                 { QMutexLocker locker(& mLock); mPort = p; }
-    void               setAutoReconnect(bool b)         { mTelnet.setAutoReconnect(b); }
-    QString &          getLogin()                       { QMutexLocker locker(& mLock); return mLogin; }
-    void               setLogin(const QString& s )      { QMutexLocker locker(& mLock); mLogin = s; }
-    QString &          getPass()                        { QMutexLocker locker(& mLock); return mPass; }
-    void               setPass(const QString& s )       { QMutexLocker locker(& mLock); mPass = s; }
-    int                getRetries()                     { QMutexLocker locker(& mLock); return mRetries;}
-    void               setRetries( int c )              { QMutexLocker locker(& mLock); mRetries = c; }
-    int                getTimeout()                     { QMutexLocker locker(& mLock); return mTimeout; }
-    void               setTimeout( int seconds )        { QMutexLocker locker(& mLock); mTimeout = seconds; }
-    bool               wideAmbiguousEAsianGlyphs() { QMutexLocker locker(& mLock); return mWideAmbigousWidthGlyphs; }
+    QString             getName()                       { QReadLocker locker(&mLock); return mHostName; }
+    void                setName(const QString& s);
+    QString             getCommandSeparator()           { QReadLocker locker(&mLock); return mCommandSeparator; }
+    voidp               setCommandSeparator(const QString& s)   { QWriteLocker locker(&mLock); mCommandSeparator = s; }
+    QString             getUrl()                        { QReadLocker locker(&mLock); return mUrl; }
+    void                setUrl(const QString& s)        { QWriteLocker locker(&mLock); mUrl = s; }
+    QString             getUserDefinedName()            { QReadLocker locker(&mLock); return mUserDefinedName; }
+    void                setUserDefinedName(const QString& s)    { QWriteLocker locker(&mLock); mUserDefinedName = s; }
+    int                 getPort()                       { QReadLocker locker(&mLock); return mPort; }
+    void                setPort(const int p)            { QWriteLocker locker(&mLock); mPort = p; }
+    void                setAutoReconnect(const bool b)  { mTelnet.setAutoReconnect(b); }
+    QString &           getLogin()                      { QReadLocker locker(&mLock); return mLogin; }
+    void                setLogin(const QString& s )     { QWriteLocker locker(&mLock); mLogin = s; }
+    QString &           getPass()                       { QReadLocker locker(&mLock); return mPass; }
+    void                setPass(const QString& s )      { QWriteLocker locker(&mLock); mPass = s; }
+    int                 getRetries()                    { QReadLocker locker(&mLock); return mRetries;}
+    void                setRetries( int c )             { QWriteLocker locker(&mLock); mRetries = c; }
+    int                 getTimeout()                    { QReadLocker locker(&mLock); return mTimeout; }
+    void                setTimeout( int seconds )       { QWriteLocker locker(&mLock); mTimeout = seconds; }
+    bool                wideAmbiguousEAsianGlyphs()     { QReadLocker locker(&mLock); return mWideAmbigousWidthGlyphs; }
     // Uses PartiallyChecked to set the automatic mode, otherwise Checked/Unchecked means use wide/narrow ambiguous glyphs
-    void               setWideAmbiguousEAsianGlyphs(Qt::CheckState state );
+    void                setWideAmbiguousEAsianGlyphs(Qt::CheckState state );
     // Is used to set preference dialog control directly:
-    Qt::CheckState     getWideAmbiguousEAsianGlyphsControlState() { QMutexLocker locker(& mLock);
-                                                                       return mAutoAmbigousWidthGlyphsSetting
-                                                                               ? Qt::PartiallyChecked
-                                                                               : (mWideAmbigousWidthGlyphs ? Qt::Checked : Qt::Unchecked); }
-    void               setHaveColorSpaceId(const bool state) { QMutexLocker locker(& mLock); mSGRCodeHasColSpaceId = state; }
-    bool               getHaveColorSpaceId() { QMutexLocker locker(& mLock); return mSGRCodeHasColSpaceId; }
-    void               setMayRedefineColors(const bool state) { QMutexLocker locker(& mLock); mServerMayRedefineColors = state; }
-    bool               getMayRedefineColors() { QMutexLocker locker(& mLock); return mServerMayRedefineColors; }
-    void               setDiscordApplicationID(const QString& s);
-    const QString&     getDiscordApplicationID();
-    void               setSpellDic(const QString&);
-    const QString&     getSpellDic() { QMutexLocker locker(& mLock); return mSpellDic; }
-    void               setUserDictionaryOptions(const bool useDictionary, const bool useShared);
-    void               getUserDictionaryOptions(bool& useDictionary, bool& useShared) { QMutexLocker locker(& mLock); useDictionary = mEnableUserDictionary; useShared = mUseSharedDictionary; }
-
+    Qt::CheckState      getWideAmbiguousEAsianGlyphsControlState()  { QReadLocker locker(&mLock);
+                                                                        return mAutoAmbigousWidthGlyphsSetting
+                                                                            ? Qt::PartiallyChecked
+                                                                            : (mWideAmbigousWidthGlyphs ? Qt::Checked : Qt::Unchecked); }
+    void                setHaveColorSpaceId(const bool state)   { QWriteLocker locker(&mLock); mSGRCodeHasColSpaceId = state; }
+    bool                getHaveColorSpaceId()                   { QReadLocker locker(&mLock); return mSGRCodeHasColSpaceId; }
+    void                setMayRedefineColors(const bool state)  { QWriteLocker locker(&mLock); mServerMayRedefineColors = state; }
+    bool                getMayRedefineColors()                  { QReadLocker locker(&mLock); return mServerMayRedefineColors; }
+    void                setDiscordApplicationID(const QString& s);
+    const QString&      getDiscordApplicationID();
+    void                setSpellDic(const QString&);
+    const QString&      getSpellDic()                           { QReadLocker locker(&mLock); return mSpellDic; }
+    void                setUserDictionaryOptions(const bool useDictionary, const bool useShared);
+    void                getUserDictionaryOptions(bool& useDictionary, bool& useShared)  { QReadLocker locker(&mLock); useDictionary = mEnableUserDictionary; useShared = mUseSharedDictionary; }
+    bool                isClosingDown()                         { QReadLocker locker(&mLock); return mIsClosingDown; }
     void closingDown();
-    bool isClosingDown();
     unsigned int assemblePath();
     bool checkForMappingScript();
 
-    TriggerUnit* getTriggerUnit() { return &mTriggerUnit; }
-    TimerUnit* getTimerUnit() { return &mTimerUnit; }
-    AliasUnit* getAliasUnit() { return &mAliasUnit; }
-    ActionUnit* getActionUnit() { return &mActionUnit; }
-    KeyUnit* getKeyUnit() { return &mKeyUnit; }
-    ScriptUnit* getScriptUnit() { return &mScriptUnit; }
+    TriggerUnit*        getTriggerUnit()                        { QReadLocker locker(&mLock); return &mTriggerUnit; }
+    TimerUnit*          getTimerUnit()                          { QReadLocker locker(&mLock); return &mTimerUnit; }
+    AliasUnit*          getAliasUnit()                          { QReadLocker locker(&mLock); return &mAliasUnit; }
+    ActionUnit*         getActionUnit()                         { QReadLocker locker(&mLock); return &mActionUnit; }
+    KeyUnit*            getKeyUnit()                            { QReadLocker locker(&mLock); return &mKeyUnit; }
+    ScriptUnit*         getScriptUnit()                         { QReadLocker locker(&mLock); return &mScriptUnit; }
 
     void connectToServer();
     void send(QString cmd, bool wantPrint = true, bool dontExpandAliases = false);
 
-    int getHostID()
-    {
-        QMutexLocker locker(&mLock);
-        return mHostID;
-    }
+    int                 getHostID()                             { QReadLocker locker(&mLock); return mHostID; }
+    void                setHostID(const int id)                 { QWriteLocker locker(&mLock); mHostID = id; }
 
-    void setHostID(int id)
-    {
-        QMutexLocker locker(&mLock);
-        mHostID = id;
-    }
-
-    TLuaInterpreter* getLuaInterpreter() { return &mLuaInterpreter; }
-    LuaInterface* getLuaInterface() { return mLuaInterface.data(); }
+    TLuaInterpreter*    getLuaInterpreter()                     { QReadLocker locker(&mLock); return &mLuaInterpreter; }
+    LuaInterface*       getLuaInterface()                       { QReadLocker locker(&mLock); return mLuaInterface.data(); }
 
     void incomingStreamProcessor(const QString& paragraph, int line);
     void postIrcMessage(const QString&, const QString&, const QString&);
@@ -241,7 +233,7 @@ public:
     QPair<bool, QString> startStopWatch(const QString&);
     QPair<bool, QString> stopStopWatch(const int);
     QPair<bool, QString> stopStopWatch(const QString&);
-    stopWatch* getStopWatch(const int id) const { return mStopWatchMap.value(id); }
+    stopWatch*          getStopWatch(const int id)              { QReadLocker locker(&mLock); return mStopWatchMap.value(id); }
     int findStopWatchId(const QString&) const;
     QPair<bool, QString> setStopWatchName(const int, const QString&);
     QPair<bool, QString> setStopWatchName(const QString&, const QString&);
@@ -252,7 +244,7 @@ public:
     void reloadModule(const QString& reloadModuleName);
     std::pair<bool, QString> changeModuleSync(const QString& enableModuleName, const QLatin1String &value);
     std::pair<bool, QString> getModuleSync(const QString& moduleName);
-    bool blockScripts() { return mBlockScriptCompile; }
+    bool                blockScripts()                          { QReadLocker locker(&mLock); return mBlockScriptCompile; }
     void refreshPackageFonts();
 
     void registerEventHandler(const QString&, TScript*);
@@ -279,12 +271,14 @@ public:
 
     void set_USE_IRE_DRIVER_BUGFIX(bool b)
     {
+        QWriteLocker locker(&mLock);
         mUSE_IRE_DRIVER_BUGFIX = b;
         mTelnet.set_USE_IRE_DRIVER_BUGFIX(b);
     }
 
     void set_LF_ON_GA(bool b)
     {
+        QWriteLocker locker(&mLock);
         mLF_ON_GA = b;
         mTelnet.set_LF_ON_GA(b);
     }
@@ -312,7 +306,7 @@ public:
     QString getMediaLocationGMCP() const;
     void setMediaLocationMSP(const QString& mediaUrl);
     QString getMediaLocationMSP() const;
-    const QFont& getDisplayFont() const { return mDisplayFont; }
+    const QFont&        getDisplayFont()                { QReadLocker locker(&mLock); return mDisplayFont; }
     std::pair<bool, QString> setDisplayFont(const QFont& font);
     std::pair<bool, QString> setDisplayFont(const QString& fontName);
     void setDisplayFontFromString(const QString& fontData);
@@ -348,7 +342,7 @@ public:
     int mBorderRightWidth;
     int mBorderTopHeight;
     QFont mCommandLineFont;
-    QString mCommandSeparator;
+
     bool mEnableGMCP;
     bool mEnableMSSP;
     bool mEnableMSP;
@@ -364,7 +358,6 @@ public:
     bool mInsertedMissingLF;
 
     bool mSslTsl;
-    bool mAutoReconnect;
     bool mSslIgnoreExpired;
     bool mSslIgnoreSelfSigned;
     bool mSslIgnoreAll;
@@ -438,7 +431,7 @@ public:
 
     int mTimeout;
 
-    QString mUrl;
+
 
     bool mUSE_FORCE_LF_AFTER_PROMPT;
     bool mUSE_IRE_DRIVER_BUGFIX;
@@ -594,7 +587,7 @@ private:
     bool mIsClosingDown;
 
     QString mLine;
-    QMutex mLock;
+    QReadWriteLock mLock;
     QString mLogin;
     QString mPass;
 
@@ -604,6 +597,11 @@ private:
     bool mSaveProfileOnExit;
 
     QString mUserDefinedName;
+
+    // Things made private to force access to them outside of Host class be
+    // controlled by the QReadWriteLock mLock:
+    QString mCommandSeparator;
+    QString mUrl;
 
     // To keep things simple for Lua the first stopwatch will be allocated a key
     // of 1 - and anything less that that will be rejected - and we force

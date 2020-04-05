@@ -380,7 +380,7 @@ void XMLexport::writeHost(Host* pHost, pugi::xml_node mudletPackage)
     host.append_attribute("mNoAntiAlias") = pHost->mNoAntiAlias ? "yes" : "no";
     host.append_attribute("mEchoLuaErrors") = pHost->mEchoLuaErrors ? "yes" : "no";
     host.append_attribute("runAllKeyMatches") = pHost->getKeyUnit()->mRunAllKeyMatches ? "yes" : "no";
-    host.append_attribute("AmbigousWidthGlyphsToBeWide") = pHost->mAutoAmbigousWidthGlyphsSetting ? "auto" : (pHost->mWideAmbigousWidthGlyphs ? "yes" : "no");
+    host.append_attribute("AmbigousWidthGlyphsToBeWide") = pHost->getAutoAmbigousWidthGlyphsSetting() ? "auto" : (pHost->getWideAmbigousWidthGlyphs() ? "yes" : "no");
     // FIXME: Change to a string or integer property when possible to support more
     // than false (perhaps 0 or "PlainText") or true (perhaps 1 or "HTML") in the
     // future - phpBB code might be useful if it can be done.
@@ -520,7 +520,7 @@ void XMLexport::writeHost(Host* pHost, pugi::xml_node mudletPackage)
         host.append_child("mDisplayFont").text().set(pHost->getDisplayFont().toString().toUtf8().constData());
         host.append_child("mCommandLineFont").text().set(pHost->mCommandLineFont.toString().toUtf8().constData());
         // There was a mis-spelt duplicate commandSeperator above but it is now gone
-        host.append_child("mCommandSeparator").text().set(pHost->mCommandSeparator.toUtf8().constData());
+        host.append_child("mCommandSeparator").text().set(pHost->getCommandSeparator().toUtf8().constData());
         host.append_child("commandLineMinimumHeight").text().set(QString::number(pHost->commandLineMinimumHeight).toUtf8().constData());
 
         host.append_child("mFgColor2").text().set(pHost->mFgColor_2.name().toUtf8().constData());

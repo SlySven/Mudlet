@@ -951,8 +951,9 @@ void Host::send(QString cmd, bool wantPrint, bool dontExpandAliases)
         }
     }
     QStringList commandList;
-    if (!mCommandSeparator.isEmpty()) {
-        commandList = cmd.split(QString(mCommandSeparator), QString::SkipEmptyParts);
+    const QString commandSeparator{getCommandSeparator()};
+    if (!commandSeparator.isEmpty()) {
+        commandList = cmd.split(commandSeparator, QString::SkipEmptyParts);
     } else {
         // don't split command if the command separator is blank
         commandList << cmd;
@@ -1437,14 +1438,11 @@ void Host::connectToServer()
 
 void Host::closingDown()
 {
-    QMutexLocker locker(&mLock);
-    mIsClosingDown = true;
-}
+    while (!mLock.tryLockForWrite(100)) {
+        qDebug().nospace().noquote() << "Host::closingDown() INFO - Blocked whilst waiting for WRITE lock...";
+    }
 
-bool Host::isClosingDown()
-{
-    QMutexLocker locker(&mLock);
-    return mIsClosingDown;
+    mIsClosingDown = true;
 }
 
 bool Host::installPackage(const QString& fileName, int module)
@@ -1935,7 +1933,9 @@ void Host::setWideAmbiguousEAsianGlyphs(const Qt::CheckState state)
     bool needToEmit = false;
     const QString encoding(mTelnet.getEncoding());
 
-    QMutexLocker locker(& mLock);
+    while (!mLock.tryLockForWrite(100)) {
+        qDebug().nospace().noquote() << "Host::setWideAmbiguousEAsianGlyphs() INFO - Blocked whilst waiting for WRITE lock...";
+    }
     if (state == Qt::PartiallyChecked) {
         // Set things automatically
         mAutoAmbigousWidthGlyphsSetting = true;
@@ -1976,7 +1976,7 @@ void Host::setWideAmbiguousEAsianGlyphs(const Qt::CheckState state)
 
     }
 
-    locker.unlock();
+    mLock.unlock();
     // We do not need to keep the mutex any longer as we have a local copy to
     // work with whilst the connected methods react to the signal:
     if (needToEmit) {
@@ -2372,8 +2372,15 @@ void Host::setUserDictionaryOptions(const bool _useDictionary, const bool useSha
 // however it should ensure that other classes get updated:
 void Host::setName(const QString& newName)
 {
+    mLock.lockForRead();
     if (mHostName == newName) {
+        mLock.unlock();
         return;
+    }
+
+    mLock.unlock();
+    while (!mLock.tryLockForWrite(100)) {
+        qDebug().nospace().noquote() << "Host::setName(...) INFO - Blocked whilst waiting for WRITE lock...";
     }
 
     int currentPlayerRoom = 0;
@@ -2381,11 +2388,10 @@ void Host::setName(const QString& newName)
         currentPlayerRoom = mpMap->mRoomIdHash.take(mHostName);
     }
 
-    QMutexLocker locker(& mLock);
-    // Now we have the exclusive lock on this class's protected members
+    // Now we have the exclusive (write) lock on this class's protected members
     mHostName = newName;
     // We have made the change to the protected aspects of this class so can unlock the mutex locker and proceed:
-    locker.unlock();
+    mLock.unlock();
 
     mTelnet.mProfileName = newName;
     if (mpMap) {

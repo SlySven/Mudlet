@@ -988,7 +988,7 @@ void XMLimport::readHostPackage(Host* pHost)
             } else if (name() == "wrapIndentCount") {
                 pHost->mWrapIndentCount = readElementText().toInt();
             } else if (name() == "mCommandSeparator") {
-                pHost->mCommandSeparator = readElementText();
+                pHost->setCommandSeparator(readElementText());
             } else if (name() == "mCommandLineFgColor") {
                 pHost->mCommandLineFgColor.setNamedColor(readElementText());
             } else if (name() == "mCommandLineBgColor") {
