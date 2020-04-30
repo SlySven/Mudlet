@@ -234,6 +234,7 @@ void TAlias::setRegexCode(const QString& code)
     compileRegex();
 }
 
+// Used in two places - the setRegexCode() above and the compileAll()
 void TAlias::compileRegex()
 {
     const char* error;
@@ -249,7 +250,9 @@ void TAlias::compileRegex()
             TDebug(QColor(Qt::white), QColor(Qt::red)) << "REGEX ERROR: failed to compile, reason:\n" << error << "\n" >> 0;
             TDebug(QColor(Qt::red), QColor(Qt::gray)) << R"(in: ")" << mRegexCode << "\"\n" >> 0;
         }
-        setError(QStringLiteral("<b><font color='blue'>%1</font></b>").arg(tr(R"(Error: in "Pattern:", faulty regular expression, reason: "%1".)", error)));
+        setError(QStringLiteral("<b><font color='blue'>%1</font></b>")
+                         .arg(tr(R"(Error: in 'Pattern:', faulty regular expression, reason: '%1'.)", error)),
+                 QStringLiteral("errror: faulty regular expression in pattern, reason: '%1'").arg(error));
     } else {
         mOK_init = true;
     }
@@ -306,20 +309,19 @@ bool TAlias::setScript(const QString& script)
 
 bool TAlias::compileScript()
 {
-    QString code = QStringLiteral("function Alias%1() %2\nend").arg(QString::number(mID), mScript);
-    QString aliasName = QStringLiteral("Alias: %1").arg(getName());
     mFuncName = QStringLiteral("Alias%1").arg(QString::number(mID));
+    // The script is now inserted on the same line as the "function X()" so that
+    // error line numbers in the reports match the actual ones (rather then
+    // one more) that are used when the mScript is worked on in the editor:
+    QString code = QStringLiteral("function %1() %2\nend").arg(mFuncName, mScript);
     QString error;
-
-    if (mpHost->mLuaInterpreter.compile(code, error, aliasName)) {
+    if (mOK_code = mpHost->mLuaInterpreter.compile(code, error, QStringLiteral("Alias: %1").arg(mName))) {
         mNeedsToBeCompiled = false;
-        mOK_code = true;
-        return true;
     } else {
-        mOK_code = false;
-        setError(error);
-        return false;
+        // TRANSLATE_ERROR: need to translated for UI:
+        setError(error, error);
     }
+    return mOK_code;
 }
 
 void TAlias::execute()

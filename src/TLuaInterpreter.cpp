@@ -17431,11 +17431,15 @@ int TLuaInterpreter::startPermAlias(const QString& name, const QString& parent, 
         }
         pT = new TAlias(pP, mpHost);
     }
+    // This can cause an error (and associated messages to be generated)
     pT->setRegexCode(regex);
     pT->setIsFolder((regex.isEmpty() && function.isEmpty()));
+    // This should be set ONLY if there aren't errors - so should be moved to
+    // after the script is set:
     pT->setIsActive(true);
     pT->setTemporary(false);
     pT->registerAlias();
+    // This can cause an error (and associated messages to be generated)
     pT->setScript(function);
     int id = pT->getID();
     pT->setName(name);

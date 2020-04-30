@@ -157,18 +157,19 @@ bool TAction::setScript(const QString& script)
 
 bool TAction::compileScript()
 {
-    mFuncName = QString("Action") + QString::number(mID);
-    QString code = QString("function ") + mFuncName + QString("()\n") + mScript + QString("\nend\n");
+    mFuncName = QStringLiteral("Action%1").arg(mID);
+    // The script is now inserted on the same line as the "function X()" so that
+    // error line numbers in the reports match the actual ones (rather then
+    // one more) that are used when the mScript is worked on in the editor:
+    QString code = QStringLiteral("function %1() %2\nend\n").arg(mFuncName, mScript);
     QString error;
-    if (mpHost->mLuaInterpreter.compile(code, error, QString("Button: ") + getName())) {
+    if (mOK_code = mpHost->mLuaInterpreter.compile(code, error, QStringLiteral("Button: %1").arg(mName))) {
         mNeedsToBeCompiled = false;
-        mOK_code = true;
-        return true;
     } else {
-        mOK_code = false;
-        setError(error);
-        return false;
+        // TRANSLATE_ERROR: need to translated for UI:
+        setError(error, error);
     }
+    return mOK_code;
 }
 
 void TAction::execute()
@@ -218,7 +219,7 @@ void TAction::expandToolbar(TToolBar* pT)
             continue;
         }
         QIcon icon(action->mIcon);
-        QString name = action->getName();
+        QString name = action->mName;
         auto button = new TFlipButton(action, mpHost);
         button->setIcon(icon);
         button->setText(name);
@@ -304,7 +305,7 @@ void TAction::expandToolbar(TEasyButtonBar* pT)
             continue;
         }
         QIcon icon(action->mIcon);
-        QString name = action->getName();
+        QString name = action->mName;
         auto button = new TFlipButton(action, mpHost);
         button->setIcon(icon);
         button->setText(name);

@@ -3217,6 +3217,7 @@ void dlgTriggerEditor::children_icon_key(QTreeWidgetItem* pWidgetItemParent)
                 } else {
                     if (pT->ancestorsActive()) {
                         icon.addPixmap(QPixmap(QStringLiteral(":/icons/folder-pink-locked.png")), QIcon::Normal, QIcon::Off);
+                        goto ROOT_TRIGGER;
                     } else {
                         icon.addPixmap(QPixmap(QStringLiteral(":/icons/folder-grey-locked.png")), QIcon::Normal, QIcon::Off);
                     }
@@ -3251,15 +3252,10 @@ void dlgTriggerEditor::children_icon_key(QTreeWidgetItem* pWidgetItemParent)
 void dlgTriggerEditor::addTrigger(bool isFolder)
 {
     saveTrigger();
-    QString name;
-    if (isFolder) {
-        name = tr("New trigger group");
-    } else {
-        name = tr("New trigger");
-    }
+    QString name{isFolder ? tr("New trigger group") : tr("New trigger")};
     QStringList regexList;
     QList<int> regexPropertyList;
-    QString script = "";
+    QString script;
     QStringList nameL;
     nameL << name;
 
@@ -3271,27 +3267,28 @@ void dlgTriggerEditor::addTrigger(bool isFolder)
         int parentID = pParent->data(0, Qt::UserRole).toInt();
 
         TTrigger* pParentTrigger = mpHost->getTriggerUnit()->getTrigger(parentID);
-        if (pParentTrigger) {
+        if (! pParentTrigger) {
+
             // insert new items as siblings unless the parent is a folder
             if (!pParentTrigger->isFolder()) {
                 // handle root items
                 if (!pParentTrigger->getParent()) {
                     goto ROOT_TRIGGER;
-                } else {
-                    // insert new item as sibling of the clicked item
-                    if (pParent->parent()) {
-                        pT = new TTrigger(pParentTrigger->getParent(), mpHost);
-                        pNewItem = new QTreeWidgetItem(pParent->parent(), nameL);
-                        pParent->parent()->insertChild(0, pNewItem);
-                    }
                 }
+
+                // insert new item as sibling of the clicked item
+                if (pParent->parent()) {
+                    pT = new TTrigger(pParentTrigger->getParent(), mpHost);
+                    pNewItem = new QTreeWidgetItem(pParent->parent(), nameL);
+                    pParent->parent()->insertChild(0, pNewItem);
+                }
+
             } else {
                 pT = new TTrigger(pParentTrigger, mpHost);
                 pNewItem = new QTreeWidgetItem(pParent, nameL);
                 pParent->insertChild(0, pNewItem);
             }
         } else {
-            goto ROOT_TRIGGER;
         }
     } else {
     //insert a new root item

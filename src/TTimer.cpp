@@ -172,7 +172,7 @@ void TTimer::compileAll()
 bool TTimer::setScript(const QString& script)
 {
     mScript = script;
-    if (script == "") {
+    if (script.isEmpty()) {
         mNeedsToBeCompiled = false;
         mOK_code = true;
     } else {
@@ -184,18 +184,16 @@ bool TTimer::setScript(const QString& script)
 
 bool TTimer::compileScript()
 {
-    mFuncName = QString("Timer") + QString::number(mID);
-    QString code = QString("function ") + mFuncName + QString("()\n") + mScript + QString("\nend\n");
+    mFuncName = QStringLiteral("Timer%1").arg(mID);
+    QString code = QStringLiteral("function %1() %2\nend\n").arg(mFuncName, mScript);
     QString error;
-    if (mpHost->mLuaInterpreter.compile(code, error, "Timer: " + getName())) {
+    if (mOK_code = mpHost->mLuaInterpreter.compile(code, error, QStringLiteral("Timer: %1").arg(mName))) {
         mNeedsToBeCompiled = false;
-        mOK_code = true;
-        return true;
     } else {
-        mOK_code = false;
-        setError(error);
-        return false;
+        // TRANSLATE_ERROR: need to translated for UI:
+        setError(error, error);
     }
+    return mOK_code;
 }
 
 bool TTimer::checkRestart()

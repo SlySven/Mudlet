@@ -4,7 +4,7 @@
 /***************************************************************************
  *   Copyright (C) 2008-2012 by Heiko Koehn - KoehnHeiko@googlemail.com    *
  *   Copyright (C) 2014 by Ahmed Charles - acharles@outlook.com            *
- *   Copyright (C) 2019 by Stephen Lyons - slysven@virginmedia.com         *
+ *   Copyright (C) 2019-2020 by Stephen Lyons - slysven@virginmedia.com    *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -24,6 +24,9 @@
 
 
 #include "pre_guard.h"
+#if defined(QT_DEBUG)
+#include <QDebug>
+#endif
 #include <QString>
 #include "post_guard.h"
 
@@ -60,8 +63,10 @@ public:
     void setTemporary(bool state);
     // Returns true if all the ancesters of this node are active. If there are no ancestors it also returns true.
     bool ancestorsActive() const;
-    QString& getError();
-    void setError(QString);
+    // First member is translated and HTML tagged message for UI,
+    // second is raw message for Lua API:
+    std::tuple<const QString&, const QString&>& getError() const;
+    void setError(const QString& translatedErrorMsg, const QString& rawErrorMsg);
     bool state() const;
     QString getPackageName() const { return mPackageName; }
     void setPackageName(const QString& n) { mPackageName = n; }
@@ -85,7 +90,8 @@ protected:
 private:
     bool mActive;
     bool mUserActiveState;
-    QString mErrorMessage;
+    QString mTranslatedErrorMessage;
+    QString mRawErrorMessage;
     bool mTemporary;
     bool mFolder;
 };
@@ -283,15 +289,16 @@ std::list<T*>* Tree<T>::getChildrenList() const
 }
 
 template <class T>
-QString& Tree<T>::getError()
+std::tuple<QString&, QString&>& Tree<T>::getError() const
 {
-    return mErrorMessage;
+    return {mTranslatedErrorMessage, mRawErrorMessage};
 }
 
 template <class T>
-void Tree<T>::setError(QString error)
+void Tree<T>::setError(const QString& translatedErrorMsg, const QString& rawErrorMsg)
 {
-    mErrorMessage = error;
+    mTranslatedErrorMessage = translatedErrorMsg;
+    mRawErrorMessage = rawErrorMsg;
 }
 
 #endif // MUDLET_TREE_H

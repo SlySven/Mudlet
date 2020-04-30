@@ -168,18 +168,19 @@ bool TKey::setScript(QString& script)
 
 bool TKey::compileScript()
 {
-    mFuncName = QString("Key") + QString::number(mID);
-    QString code = QString("function ") + mFuncName + QString("()\n") + mScript + QString("\nend\n");
+    mFuncName = QStringLiteral("Key%1").arg(mID);
+    // The script is now inserted on the same line as the "function X()" so that
+    // error line numbers in the reports match the actual ones (rather then
+    // one more) that are used when the mScript is worked on in the editor:
+    QString code = QStringLiteral("function %1() %2\nend\n").arg(mFuncName, mScript);
     QString error;
-    if (mpHost->mLuaInterpreter.compile(code, error, QString("Key: ") + getName())) {
+    if (mOK_code = mpHost->mLuaInterpreter.compile(code, error, QStringLiteral("Key: %1").arg(mName))) {
         mNeedsToBeCompiled = false;
-        mOK_code = true;
-        return true;
     } else {
-        mOK_code = false;
-        setError(error);
-        return false;
+        // TRANSLATE_ERROR: need to translated for UI:
+        setError(error, error);
     }
+    return mOK_code;
 }
 
 void TKey::execute()

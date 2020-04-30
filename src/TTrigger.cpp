@@ -173,15 +173,18 @@ bool TTrigger::setRegexCodeList(QStringList regexList, QList<int> propertyList)
         qDebug() << "[CRITICAL ERROR (plz report):] Trigger name=" << mName << " aborting reason: propertyList.size() != regexList.size()";
     }
 
-    if ((propertyList.empty()) && (!isFolder()) && (!mColorTrigger)) {
+    if (propertyList.empty() && (!isFolder()) && (!mColorTrigger)) {
         setError(QStringLiteral("<b><font color='blue'>%1</font></b>")
-                .arg(tr("Error: This trigger has no patterns defined, yet. Add some to activate it.")));
+                         .arg(tr("Error: This trigger has no patterns defined, yet. Add some to activate it.")),
+                 QStringLiteral("trigger error: no patterns defined yet; add some before trying to activate it"));
         mOK_init = false;
         return false;
     }
 
+    // Needed to hold where there are ANY errors in any of the items:
     bool state = true;
-
+    QStringList translatedErrorMessages;
+    QStringList rawErrorMessages;
     for (int i = 0; i < regexList.size(); i++) {
         if (regexList.at(i).isEmpty() && propertyList.at(i) != REGEX_PROMPT) {
             continue;
@@ -199,15 +202,16 @@ bool TTrigger::setRegexCodeList(QStringList regexList, QList<int> propertyList)
             // PCRE_UTF8 needed to run compile in UTF-8 mode
             // PCRE_UCP needed for \d, \w etc. to use Unicode properties:
             QSharedPointer<pcre> re(pcre_compile(regexp.constData(), PCRE_UTF8 | PCRE_UCP, &error, &erroffset, nullptr), pcre_deleter);
-
             if (!re) {
                 if (mudlet::debugMode) {
-                    TDebug(QColor(Qt::white), QColor(Qt::red)) << "REGEX ERROR: failed to compile, reason:\n" << error << "\n" >> 0;
+                    TDebug(QColor(Qt::white), QColor(Qt::red)) << "REGEX ERROR: failed to compile item: " << 1 + i << " of trigger: '" << mName << ", reason:\n" << error << "\n" >> 0;
                     TDebug(QColor(Qt::red), QColor(Qt::gray)) << R"(in: ")" << regexp.constData() << "\"\n" >> 0;
                 }
-                setError(QStringLiteral("<b><font color='blue'>%1</font></b>")
-                         .arg(tr(R"(Error: in item %1, perl regex "%2" failed to compile, reason: "%3".)")
-                         .arg(QString::number(i + 1), regexp.constData(), error)));
+                translatedErrorMessages << QStringLiteral("<b><font color='blue'>%1</font></b>")
+                                                   .arg(tr(R"(Error: in item %1, perl regex "%2" failed to compile, reason: "%3".)")
+                                                                .arg(QString::number(i + 1), regexp.constData(), error));
+                rawErrorMessages << QStringLiteral(R"(Error: in item %1, perl regex "%2" failed to compile, reason: "%3".)")
+                                            .arg(QString::number(i + 1), regexp.constData(), error);
                 state = false;
             } else {
                 if (mudlet::debugMode) {
@@ -1220,17 +1224,15 @@ bool TTrigger::setScript(const QString& script)
 bool TTrigger::compileScript()
 {
     mFuncName = QStringLiteral("Trigger%1").arg(QString::number(mID));
-    QString code = QStringLiteral("function %1()\n%2\nend\n").arg(mFuncName, mScript);
+    QString code = QStringLiteral("function %1() %2\nend\n").arg(mFuncName, mScript);
     QString error;
-    if (mpLua->compile(code, error, QStringLiteral("Trigger: %1").arg(getName()))) {
+    if (mOK_code = mpLua->compile(code, error, QStringLiteral("Trigger: %1").arg(mName))) {
         mNeedsToBeCompiled = false;
-        mOK_code = true;
-        return true;
     } else {
-        mOK_code = false;
-        setError(error);
-        return false;
+        // TRANSLATE_ERROR: need to translated for UI:
+        setError(error, error);
     }
+    return mOK_code;
 }
 
 void TTrigger::execute()
