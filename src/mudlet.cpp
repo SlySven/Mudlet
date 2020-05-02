@@ -2146,28 +2146,6 @@ std::pair<bool, QString> mudlet::createMiniConsole(Host* pHost, const QString& w
     return {false, QStringLiteral("miniconsole/userwindow \"%1\" exists already.").arg(name)};
 }
 
-std::pair<bool, QString> mudlet::createLabel(Host* pHost, const QString& windowname, const QString& name, int x, int y, int width, int height, bool fillBg, bool clickthrough)
-{
-    if (!pHost || !pHost->mpConsole) {
-        return {false, QString()};
-    }
-
-    auto pL = pHost->mpConsole->mLabelMap.value(name);
-    auto pC = pHost->mpConsole->mSubConsoleMap.value(name);
-    if (!pL && !pC) {
-        pL = pHost->mpConsole->createLabel(windowname, name, x, y, width, height, fillBg, clickthrough);
-        if (pL) {
-            return {true, QString()};
-        }
-    } else if (pL) {
-        return {false, QStringLiteral("label \"%1\" exists already.").arg(name)};
-    } else if (pC) {
-        return {false, QStringLiteral("a miniconsole/userwindow with the name \"%1\" exists already. label name has to be unique.").arg(name)};
-    }
-    return {false, QString()};
-
-}
-
 bool mudlet::createBuffer(Host* pHost, const QString& name)
 {
     if (!pHost || !pHost->mpConsole) {

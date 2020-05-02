@@ -2234,29 +2234,57 @@ TConsole* TConsole::createMiniConsole(const QString& windowname, const QString& 
     }
 }
 
-TLabel* TConsole::createLabel(const QString& windowname, const QString& name, int x, int y, int width, int height, bool fillBackground, bool clickThrough)
+// Called from TLuaInterpreter
+std::pair<bool, QString> TConsole::createLabel(const QString& windowName, const QString& name, int x, int y, int width, int height, bool fillBg, bool clickthrough)
 {
-    //if pW put Label in Userwindow
-    auto pL = mLabelMap.value(name);
-    auto pW = mDockWidgetMap.value(windowname);
-    if (!pL) {
-        if (!pW) {
-            pL = new TLabel(mpHost, mpMainFrame);
-        } else {
-            pL = new TLabel(mpHost, pW->widget());
-        }
-        mLabelMap[name] = pL;
-        pL->setObjectName(name);
-        pL->setAutoFillBackground(fillBackground);
-        pL->setClickThrough(clickThrough);
-        pL->resize(width, height);
-        pL->setContentsMargins(0, 0, 0, 0);
-        pL->move(x, y);
-        pL->show();
-        return pL;
-    } else {
-        return nullptr;
+    if (name.compare(QLatin1String("main"))) {
+        return {false, QLatin1String("the name \"main\" is reserved for the main profile console and cannot be used for a label")};
     }
+
+    TDockWidget* pD = nullptr;
+    TConsole* pC = nullptr;
+    if (!windowName.isEmpty() && windowName.compare(QLatin1String("main"))) {
+        // Is NOT being applied to the main TConsole, so lets see if it exists
+        // as a user window:
+        pC = mSubConsoleMap.value(windowName);
+        if (pC && pC->mType != TConsole::UserWindow) {
+            return {false, QStringLiteral("\"%1\" is not a user window so the label cannot be put on it").arg(windowName)};
+        }
+        pD = mDockWidgetMap.value(windowName);
+        if (Q_UNLIKELY(!pD)) {
+            return {false, QStringLiteral("INTERNAL ERROR: \"%1\" should be a user window but there is an internal inconsistency and the container widget for this window cannot be found, please report this to the Mudlet Makers").arg(windowName)};
+        }
+    }
+
+    auto pL = mLabelMap.value(name);
+    if (pL) {
+        return {false, QStringLiteral("a label with the name \"%1\" exists already").arg(name)};
+    }
+
+    if (mSubConsoleMap.contains(name)) {
+        return {false, QStringLiteral("a miniconsole, userwindow or buffer with the name \"%1\" exists already; a label's name has to be unique amongst all of these").arg(name)};
+    }
+
+    pL = new TLabel(mpHost, (pD ? pD->widget() : mpMainFrame));
+    Q_ASSERT_X(pL, "TConsole::createLabel(...)", "Unable to create a new TLabel");
+    mLabelMap[name] = pL;
+    // FIXME: This may not be appropriate as it means that more that one object
+    // with this name can appear in a multi-profile loaded situation and cause
+    // stylesheet problem should they both have a label with the same name, e.g.
+    // if created from a package/script that is common to both and that uses
+    // the '#name' suffix to identify a style to apply to that specific label:
+    // It may be advisable to switch to something like:
+    // pL->setObjectName(QStringLiteral("%1_%2").arg(mpHost->getName(), name));
+    // though that will also break packages/scripts that rely on the objectName
+    // being just the label's name:
+    pL->setObjectName(name);
+    pL->setAutoFillBackground(fillBg);
+    pL->setClickThrough(clickthrough);
+    pL->resize(width, height);
+    pL->setContentsMargins(0, 0, 0, 0);
+    pL->move(x, y);
+    pL->show();
+    return {true, QString()};
 }
 
 std::pair<bool, QString> TConsole::deleteLabel(const QString& name)

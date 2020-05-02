@@ -3801,84 +3801,89 @@ int TLuaInterpreter::createLabel(lua_State* L)
     if (lua_type(L, 1) != LUA_TSTRING) {
         lua_pushfstring(L, "createLabel: bad argument #1 type (label or parent window name as string expected, got %s!)", luaL_typename(L, 1));
         return lua_error(L);
-    } else if ((lua_type(L, 1) == LUA_TSTRING) && (lua_type(L, 2) == LUA_TSTRING)) {
-        windowName = QString::fromUtf8(lua_tostring(L, 1));
-        labelName = QString::fromUtf8(lua_tostring(L, 2));
-        createLabelUserWindow(L, windowName, labelName);
-    } else if ((lua_type(L, 1) == LUA_TSTRING) && (lua_type(L, 2) == LUA_TNUMBER)) {
-        labelName = QString::fromUtf8(lua_tostring(L, 1));
-        createLabelMainWindow(L, labelName);
-    } else {
-        lua_pushfstring(L, "createLabel: bad argument #2 type (label name as string or label x-coordinate as number expected, got %s!)", luaL_typename(L, 2));
-        return lua_error(L);
     }
 
-    return 1;
+    if ((lua_type(L, 1) == LUA_TSTRING) && (lua_type(L, 2) == LUA_TSTRING)) {
+        windowName = QString::fromUtf8(lua_tostring(L, 1));
+        labelName = QString::fromUtf8(lua_tostring(L, 2));
+        // The called function will put the required return values on the lua
+        // stack (unless it bails out with a lua_error() and does a longjmp and
+        // doesn't return here) all we have to do is return the number of values
+        // to the lua subsystem that called this function:
+        return createLabelUserWindow(L, windowName, labelName);
+    }
+
+    if ((lua_type(L, 1) == LUA_TSTRING) && (lua_type(L, 2) == LUA_TNUMBER)) {
+        labelName = QString::fromUtf8(lua_tostring(L, 1));
+        // Same as the previous if:
+        return createLabelMainWindow(L, labelName);
+    }
+
+    // If we get to here then the first argument is a string and the second
+    // argument is not a string or a number - so must wrong:
+    lua_pushfstring(L, "createLabel: bad argument #2 type (label name as string or label x-coordinate as number expected, got %s!)", luaL_typename(L, 2));
+    return lua_error(L);
 }
 
 // Internal Function createLabel in an UserWindow
 int TLuaInterpreter::createLabelUserWindow(lua_State* L, const QString& windowName, const QString& labelName)
 {
-    int n = lua_gettop(L);
-    int x = 0;
     if (!lua_isnumber(L, 3)) {
         lua_pushfstring(L, "createLabel: bad argument #3 type (label x-coordinate as number expected, got %s!)", luaL_typename(L, 3));
         return lua_error(L);
-    } else {
-        x = lua_tonumber(L, 3);
     }
-    int y = 0;
+    int x = lua_tonumber(L, 3);
+
     if (!lua_isnumber(L, 4)) {
         lua_pushfstring(L, "createLabel: bad argument #4 type (label y-coordinate as number expected, got %s!)", luaL_typename(L, 4));
         return lua_error(L);
-    } else {
-        y = lua_tonumber(L, 4);
     }
-    int width = 0;
+    int y = lua_tonumber(L, 4);
+
     if (!lua_isnumber(L, 5)) {
         lua_pushfstring(L, "createLabel: bad argument #5 type (label width as number expected, got %s!)", luaL_typename(L, 5));
         return lua_error(L);
-    } else {
-        width = lua_tonumber(L, 5);
     }
-    int height = 0;
+    int width = lua_tonumber(L, 5);
+
     if (!lua_isnumber(L, 6)) {
         lua_pushfstring(L, "createLabel: bad argument #6 type (label height as number expected, got %s!)", luaL_typename(L, 6));
         return lua_error(L);
-    } else {
-        height = lua_tonumber(L, 6);
     }
-    bool fillBackground = false;
+    int height = lua_tonumber(L, 6);
+
     if ((!lua_isnumber(L, 7)) && (!lua_isboolean(L, 7))) {
         lua_pushfstring(L, "createLabel: bad argument #7 type (label fillBackground as boolean/number (0/1) expected, got %s!)", luaL_typename(L, 7));
         return lua_error(L);
-    } else {
-        if (lua_isboolean(L, 7)) {
-            fillBackground = lua_toboolean(L, 7);
-        } else {
-            fillBackground = (lua_tointeger(L, 7) != 0);
-        }
     }
+    bool fillBackground = false;
+    if (lua_isboolean(L, 7)) {
+        fillBackground = lua_toboolean(L, 7);
+    } else {
+        fillBackground = (lua_tointeger(L, 7) != 0);
+    }
+
     bool clickthrough = false;
-    if (n >= 8) {
+    if (lua_gettop(L) >= 8) {
         if ((!lua_isnumber(L, 8)) && (!lua_isboolean(L, 8))) {
             lua_pushfstring(L, "createLabel: bad argument #8 type (label clickthrough as boolean/number (0/1) expected, got %s!)", luaL_typename(L, 8));
             return lua_error(L);
+        }
+        if (lua_isboolean(L, 8)) {
+            clickthrough = lua_toboolean(L, 8);
         } else {
-            if (lua_isboolean(L, 8)) {
-                clickthrough = lua_toboolean(L, 8);
-            } else {
-                clickthrough = (lua_tointeger(L, 8) != 0);
-            }
+            clickthrough = (lua_tointeger(L, 8) != 0);
         }
     }
 
     Host& host = getHostFromLua(L);
-    if (auto [success, message] = mudlet::self()->createLabel(&host, windowName, labelName, x, y, width, height, fillBackground, clickthrough); !success) {
+    if (auto [success, message] = host.mpConsole->createLabel(windowName, labelName, x, y, width, height, fillBackground, clickthrough); !success) {
         // We should, perhaps be returning a nil here but the published API
         // says the function returns true or false and we cannot change that now
         lua_pushboolean(L, false);
         lua_pushfstring(L, message.toUtf8().constData());
+        // Note: we are not returning to the Lua interpreter here or at the end
+        // of the function, but to the calling C++ function:
         return 2;
     }
 
@@ -3889,67 +3894,62 @@ int TLuaInterpreter::createLabelUserWindow(lua_State* L, const QString& windowNa
 // Internal Function create Label in MainWindow
 int TLuaInterpreter::createLabelMainWindow(lua_State* L, const QString& labelName)
 {
-    QString windowName = QLatin1String("main");
-    int n = lua_gettop(L);
-    int x = 0;
     if (!lua_isnumber(L, 2)) {
         lua_pushfstring(L, "createLabel: bad argument #2 type (label x-coordinate as number expected, got %s!)", luaL_typename(L, 2));
         return lua_error(L);
-    } else {
-        x = lua_tonumber(L, 2);
     }
-    int y = 0;
+    int x = lua_tonumber(L, 2);
+
     if (!lua_isnumber(L, 3)) {
         lua_pushfstring(L, "createLabel: bad argument #3 type (label y-coordinate as number expected, got %s!)", luaL_typename(L, 3));
         return lua_error(L);
-    } else {
-        y = lua_tonumber(L, 3);
     }
-    int width = 0;
+    int y = lua_tonumber(L, 3);
+
     if (!lua_isnumber(L, 4)) {
         lua_pushfstring(L, "createLabel: bad argument #4 type (label width as number expected, got %s!)", luaL_typename(L, 4));
         return lua_error(L);
-    } else {
-        width = lua_tonumber(L, 4);
     }
-    int height = 0;
+    int width = lua_tonumber(L, 4);
+
     if (!lua_isnumber(L, 5)) {
         lua_pushfstring(L, "createLabel: bad argument #5 type (label height as number expected, got %s!)", luaL_typename(L, 5));
         return lua_error(L);
-    } else {
-        height = lua_tonumber(L, 5);
     }
-    bool fillBackground = false;
+    int height = lua_tonumber(L, 5);
+
     if ((!lua_isnumber(L, 6)) && (!lua_isboolean(L, 6))) {
         lua_pushfstring(L, "createLabel: bad argument #6 type (label fillBackground as boolean/number (0/1) expected, got %s!)", luaL_typename(L, 6));
         return lua_error(L);
-    } else {
-        if (lua_isboolean(L, 6)) {
-            fillBackground = lua_toboolean(L, 6);
-        } else {
-            fillBackground = (lua_tointeger(L, 6) != 0);
-        }
     }
+    bool fillBackground = false;
+    if (lua_isboolean(L, 6)) {
+        fillBackground = lua_toboolean(L, 6);
+    } else {
+        fillBackground = (lua_tointeger(L, 6) != 0);
+    }
+
     bool clickthrough = false;
-    if (n >= 7) {
+    if (lua_gettop(L) >= 7) {
         if ((!lua_isnumber(L, 7)) && (!lua_isboolean(L, 7))) {
             lua_pushfstring(L, "createLabel: bad argument #7 type (label clickthrough as boolean/number (0/1) expected, got %s!)", luaL_typename(L, 7));
             return lua_error(L);
+        }
+        if (lua_isboolean(L, 7)) {
+            clickthrough = lua_toboolean(L, 7);
         } else {
-            if (lua_isboolean(L, 7)) {
-                clickthrough = lua_toboolean(L, 7);
-            } else {
-                clickthrough = (lua_tointeger(L, 7) != 0);
-            }
+            clickthrough = (lua_tointeger(L, 7) != 0);
         }
     }
 
     Host& host = getHostFromLua(L);
-    if (auto [success, message] = mudlet::self()->createLabel(&host, windowName, labelName, x, y, width, height, fillBackground, clickthrough); !success) {
+    if (auto [success, message] = host.mpConsole->createLabel(QLatin1String("main"), labelName, x, y, width, height, fillBackground, clickthrough); !success) {
         // We should, perhaps be returning a nil here but the published API
         // says the function returns true or false and we cannot change that now
         lua_pushboolean(L, false);
         lua_pushfstring(L, message.toUtf8().constData());
+        // Note: we are not returning to the Lua interpreter here or at the end
+        // of the function, but to the calling C++ function:
         return 2;
     }
 
