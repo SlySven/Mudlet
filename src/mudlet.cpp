@@ -182,6 +182,13 @@ mudlet::mudlet()
                  "Formatting string for elapsed time display in replay playback - see QDateTime::toString(const QString&) for the gory details...!"))
 , mHunspell_sharedDictionary(nullptr)
 {
+    Q_ASSERT_X(scmIsReleaseVersion || scmIsPublicTestVersion || scmIsDevelopmentVersion,
+               "mudlet::mudlet()",
+               "Build configuration failure - none of the scMIsXxxxVersion flags are set - this build is broken!");
+    Q_ASSERT_X(!((scmIsReleaseVersion && scmIsPublicTestVersion) || (scmIsReleaseVersion && scmIsDevelopmentVersion) || (scmIsPublicTestVersion && scmIsPublicTestVersion)),
+               "mudlet::mudlet()",
+               "Build configuration failure - more than one of the scMIsXxxxVersion flags are set - this build is broken!");
+
     mShowIconsOnMenuOriginally = !qApp->testAttribute(Qt::AA_DontShowIconsInMenus);
     mpSettings = getQSettings();
     readEarlySettings(*mpSettings);
