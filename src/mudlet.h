@@ -89,6 +89,11 @@
 #include <unistd.h>
 #endif
 
+// Short replacement name for a constant value that is used frequently:
+#if ! defined(MAIN_CON)
+#define MAIN_CON (mudlet::scmMainConsoleName)
+#endif
+
 class QAction;
 class QCloseEvent;
 class QMenu;
@@ -452,6 +457,7 @@ public:
     int64_t getPhysicalMemoryTotal();
     const QMap<QByteArray, QString>& getEncodingNamesMap() const { return mEncodingNameMap; }
 
+    static const QString scmMainConsoleName;
 
 #if defined(INCLUDE_UPDATER)
     Updater* updater;

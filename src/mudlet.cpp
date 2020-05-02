@@ -128,6 +128,7 @@ bool mudlet::debugMode = false;
 const bool mudlet::scmIsReleaseVersion = QByteArray(APP_BUILD).isEmpty();
 const bool mudlet::scmIsPublicTestVersion = QByteArray(APP_BUILD).startsWith("-ptb");
 const bool mudlet::scmIsDevelopmentVersion = !mudlet::scmIsReleaseVersion && !mudlet::scmIsPublicTestVersion;
+const QString mudlet::scmMainConsoleName = QStringLiteral("main");
 
 QVariantHash mudlet::mLuaFunctionNames;
 
