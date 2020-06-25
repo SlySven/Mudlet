@@ -3026,7 +3026,7 @@ void T2DMap::mousePressEvent(QMouseEvent* event)
         while (it.hasNext()) {
             it.next();
             QStringList menuInfo = it.value();
-            QString displayName = menuInfo[1];
+            QString displayName = menuInfo.at(1);
             auto userMenu = new QMenu(displayName, this);
             userMenus.insert(it.key(), userMenu);
         }
@@ -3035,11 +3035,11 @@ void T2DMap::mousePressEvent(QMouseEvent* event)
             //take care of nested menus now since they're all made
             it.next();
             QStringList menuInfo = it.value();
-            QString menuParent = menuInfo[0];
-            if (menuParent == "") { //parentless
-                popup->addMenu(userMenus[it.key()]);
+            QString menuParent = menuInfo.at(0);
+            if (menuParent.isEmpty()) { //parentless
+                popup->addMenu(userMenus.value(it.key()));
             } else { //has a parent
-                userMenus[menuParent]->addMenu(userMenus[it.key()]);
+                userMenus.value(menuParent)->addMenu(userMenus.value(it.key()));
             }
         }
         //add our actions
@@ -3052,7 +3052,7 @@ void T2DMap::mousePressEvent(QMouseEvent* event)
             if (actionInfo.at(1).isEmpty()) { //no parent
                 popup->addAction(action);
             } else if (userMenus.contains(actionInfo.at(1))) {
-                userMenus[actionInfo[1]]->addAction(action);
+                userMenus[actionInfo.at(1)]->addAction(action);
             } else {
                 delete action;
                 continue;

@@ -1368,31 +1368,32 @@ int TLuaInterpreter::addMapMenu(lua_State* L)
     QString uniqueName;
     QStringList menuList;
     if (!lua_isstring(L, 1)) {
-        lua_pushstring(L, "addMapMenu: wrong first argument type");
-        lua_error(L);
-        return 1;
-    } else {
-        uniqueName = lua_tostring(L, 1);
+        lua_pushfstring(L, "addMapMenu: bad argument #1 type (unique name as string expected, got %s!", luaL_typename(L, 1));
+        return lua_error(L);
     }
+    uniqueName = QString::fromUtf8(lua_tostring(L, 1));
+
     if (!lua_isstring(L, 2)) {
-        menuList << "";
+        menuList << QString();
     } else {
-        menuList << lua_tostring(L, 2);
+        menuList << QString::fromUtf8(lua_tostring(L, 2));
     }
+
     if (!lua_isstring(L, 3)) {
         menuList << uniqueName;
     } else {
-        menuList << lua_tostring(L, 3);
+        menuList << QString::fromUtf8(lua_tostring(L, 3));
     }
     Host& host = getHostFromLua(L);
-    if (host.mpMap) {
-        if (host.mpMap->mpMapper) {
-            if (host.mpMap->mpMapper->mp2dMap) {
-                host.mpMap->mpMapper->mp2dMap->mUserMenus.insert(uniqueName, menuList);
-            }
-        }
+    if (!host.mpMap || !host.mpMap->mpMapper || !host.mpMap->mpMapper->mp2dMap) {
+        lua_pushnil(L);
+        lua_pushstring(L, "no map present or loaded!");
+        return 2;
     }
-    return 0;
+
+    lua_pushboolean(L, true);
+    host.mpMap->mpMapper->mp2dMap->mUserMenus.insert(uniqueName, menuList);
+    return 2;
 }
 
 // Documentation: ? - public function missing documentation in wiki
@@ -1400,186 +1401,184 @@ int TLuaInterpreter::removeMapMenu(lua_State* L)
 {
     QString uniqueName;
     if (!lua_isstring(L, 1)) {
-        lua_pushstring(L, "removeMapMenu: wrong first argument type");
-        lua_error(L);
-        return 1;
-    } else {
-        uniqueName = lua_tostring(L, 1);
+        lua_pushfstring(L, "removeMapMenu: bad argument #1 type (unique name as string expected, got %s!", luaL_typename(L, 1));
+        return lua_error(L);
     }
-    if (uniqueName == "") {
-        return 0;
+    uniqueName = QString::fromUtf8(lua_tostring(L, 1));
+
+    if (uniqueName.isEmpty()) {
+        lua_pushnil(L);
+        lua_pushfstring(L, "the unique name for the menu cannot be an empty string");
+        return 2;
     }
+
     Host& host = getHostFromLua(L);
-    if (host.mpMap) {
-        if (host.mpMap->mpMapper) {
-            if (host.mpMap->mpMapper->mp2dMap) {
-                host.mpMap->mpMapper->mp2dMap->mUserMenus.remove(uniqueName);
-                //remove all entries with this as parent
-                QStringList removeList;
-                removeList.append(uniqueName);
-                bool newElement = true;
-                while (newElement) {
-                    newElement = false;
-                    QMapIterator<QString, QStringList> it(host.mpMap->mpMapper->mp2dMap->mUserMenus);
-                    while (it.hasNext()) {
-                        it.next();
-                        QStringList menuInfo = it.value();
-                        QString parent = menuInfo[0];
-                        if (removeList.contains(parent)) {
-                            host.mpMap->mpMapper->mp2dMap->mUserMenus.remove(it.key());
-                            if (it.key() != "" && !removeList.contains(it.key())) {
-                                host.mpMap->mpMapper->mp2dMap->mUserMenus.remove(it.key());
-                                removeList.append(it.key());
-                                newElement = true;
-                            }
-                        }
-                    }
-                }
-                qDebug() << removeList;
-                QMapIterator<QString, QStringList> it2(host.mpMap->mpMapper->mp2dMap->mUserActions);
-                while (it2.hasNext()) {
-                    it2.next();
-                    QString actParent = it2.value()[1];
-                    if (removeList.contains(actParent)) {
-                        host.mpMap->mpMapper->mp2dMap->mUserActions.remove(it2.key());
-                    }
+    if (!host.mpMap || !host.mpMap->mpMapper || !host.mpMap->mpMapper->mp2dMap) {
+        lua_pushnil(L);
+        lua_pushstring(L, "no map present or loaded!");
+        return 2;
+    }
+
+    int removedMenusCount = host.mpMap->mpMapper->mp2dMap->mUserMenus.remove(uniqueName);
+    int removedItemsCount = 0;
+    //remove all entries with this as parent
+    QStringList removeList;
+    removeList.append(uniqueName);
+    bool newElement = true;
+    while (newElement) {
+        newElement = false;
+        QMapIterator<QString, QStringList> it(host.mpMap->mpMapper->mp2dMap->mUserMenus);
+        while (it.hasNext()) {
+            it.next();
+            QStringList menuInfo = it.value();
+            QString parent = menuInfo[0];
+            if (removeList.contains(parent)) {
+                removedMenusCount += host.mpMap->mpMapper->mp2dMap->mUserMenus.remove(it.key());
+                if (!it.key().isEmpty() && !removeList.contains(it.key())) {
+                    removedMenusCount += host.mpMap->mpMapper->mp2dMap->mUserMenus.remove(it.key());
+                    removeList.append(it.key());
+                    newElement = true;
                 }
             }
         }
     }
-    return 0;
+    qDebug().nospace().noquote() << "TLuaInterpreter::removeMapMenu(...) INFO - removing menu entries: " << removeList;
+    QMapIterator<QString, QStringList> it2(host.mpMap->mpMapper->mp2dMap->mUserActions);
+    while (it2.hasNext()) {
+        it2.next();
+        QString actParent = it2.value().at(1);
+        if (removeList.contains(actParent)) {
+            removedItemsCount += host.mpMap->mpMapper->mp2dMap->mUserActions.remove(it2.key());
+        }
+    }
+
+    lua_pushnumber(L, removedMenusCount);
+    lua_pushnumber(L, removedItemsCount);
+    return 2;
 }
 
 // Documentation: ? - public function missing documentation in wiki
 int TLuaInterpreter::getMapMenus(lua_State* L)
 {
     Host& host = getHostFromLua(L);
-    if (host.mpMap) {
-        if (host.mpMap->mpMapper) {
-            if (host.mpMap->mpMapper->mp2dMap) {
-                lua_newtable(L);
-                QMapIterator<QString, QStringList> it(host.mpMap->mpMapper->mp2dMap->mUserMenus);
-                while (it.hasNext()) {
-                    it.next();
-                    QString parent, display;
-                    QStringList menuInfo = it.value();
-                    parent = menuInfo[0];
-                    display = menuInfo[1];
-                    lua_pushstring(L, it.key().toLatin1().data());
-                    lua_pushstring(L, parent.toLatin1().data());
-                    lua_pushstring(L, display.toLatin1().data());
-                    lua_settable(L, -3);
-                }
-            }
-            return 1;
-        }
+    if (!host.mpMap || !host.mpMap->mpMapper || !host.mpMap->mpMapper->mp2dMap) {
+        lua_pushnil(L);
+        lua_pushstring(L, "no map present or loaded!");
+        return 2;
     }
-    return 0;
+
+    lua_newtable(L);
+    QMapIterator<QString, QStringList> it(host.mpMap->mpMapper->mp2dMap->mUserMenus);
+    while (it.hasNext()) {
+        it.next();
+        QStringList menuInfo = it.value();
+        lua_pushstring(L, it.key().toUtf8().constData());
+        lua_pushstring(L, menuInfo[0].toUtf8().constData());
+        lua_pushstring(L, menuInfo[1].toUtf8().constData());
+        lua_settable(L, -3);
+    }
+    return 1;
 }
 
 // Documentation: https://wiki.mudlet.org/w/Manual:Lua_Functions#addMapEvent
 int TLuaInterpreter::addMapEvent(lua_State* L)
 {
-    QString uniqueName, eventName, parent, displayName;
-    QStringList actionInfo;
     if (!lua_isstring(L, 1)) {
         lua_pushfstring(L, "addMapEvent: bad argument #1 type (uniquename as string expected, got %s!)", luaL_typename(L, 1));
-        lua_error(L);
-        return 1;
-    } else {
-        uniqueName = QString::fromUtf8(lua_tostring(L, 1));
+        return lua_error(L);
     }
+    QString uniqueName = QString::fromUtf8(lua_tostring(L, 1));
     if (!lua_isstring(L, 2)) {
         lua_pushfstring(L, "addMapEvent: bad argument #2 type (event name as string expected, got %s!)", luaL_typename(L, 2));
-        lua_error(L);
-        return 1;
-    } else {
-        actionInfo << QString::fromUtf8(lua_tostring(L, 2));
+        return lua_error(L);
     }
-    if (!lua_isstring(L, 3)) {
+    QStringList actionInfo;
+    actionInfo << QString::fromUtf8(lua_tostring(L, 2));
+    if (lua_isnil(L, 3) || !lua_isstring(L, 3)) {
         actionInfo << QString();
     } else {
         actionInfo << QString::fromUtf8(lua_tostring(L, 3));
     }
-    if (!lua_isstring(L, 4)) {
+    if (lua_isnil(L, 4) ||!lua_isstring(L, 4)) {
         actionInfo << uniqueName;
     } else {
         actionInfo << QString::fromUtf8(lua_tostring(L, 4));
     }
-    //variable number of arguments
-    for (int i = 5; i <= lua_gettop(L); i++) {
+    // variable number of optional arguments
+    for (int i = 5; i <= lua_gettop(L); ++i) {
         actionInfo << QString::fromUtf8(lua_tostring(L, i));
     }
-    qDebug() << actionInfo;
     Host& host = getHostFromLua(L);
-    if (host.mpMap) {
-        if (host.mpMap->mpMapper) {
-            if (host.mpMap->mpMapper->mp2dMap) {
-                host.mpMap->mpMapper->mp2dMap->mUserActions.insert(uniqueName, actionInfo);
-            }
-        }
+    if (!host.mpMap || !host.mpMap->mpMapper || !host.mpMap->mpMapper->mp2dMap) {
+        lua_pushnil(L);
+        lua_pushstring(L, "no map present or loaded!");
+        return 2;
     }
-    return 0;
+
+    host.mpMap->mpMapper->mp2dMap->mUserActions.insert(uniqueName, actionInfo);
+    lua_pushboolean(L, true);
+    return 1;
 }
 
 // Documentation: https://wiki.mudlet.org/w/Manual:Lua_Functions#removeMapEvent
 int TLuaInterpreter::removeMapEvent(lua_State* L)
 {
-    QString displayName;
     if (!lua_isstring(L, 1)) {
-        lua_pushstring(L, "removeMapEvent: wrong first argument type");
-        lua_error(L);
-        return 1;
-    } else {
-        displayName = lua_tostring(L, 1);
+        lua_pushfstring(L, "removeMapEvent: bad argument #1 type (displayName as string expected, got %s!)", luaL_typename(L, 1));
+        return lua_error(L);
     }
+    QString displayName= QString::fromUtf8(lua_tostring(L, 1));
     Host& host = getHostFromLua(L);
-    if (host.mpMap) {
-        if (host.mpMap->mpMapper) {
-            if (host.mpMap->mpMapper->mp2dMap) {
-                host.mpMap->mpMapper->mp2dMap->mUserActions.remove(displayName);
-            }
-        }
+    if (!host.mpMap || !host.mpMap->mpMapper || !host.mpMap->mpMapper->mp2dMap) {
+        lua_pushnil(L);
+        lua_pushstring(L, "no map present or loaded!");
+        return 2;
     }
-    return 0;
+
+    if (!host.mpMap->mpMapper->mp2dMap->mUserActions.remove(displayName)) {
+        lua_pushnil(L);
+        lua_pushfstring(L, "menu event with name \"%s\" not found", displayName.toUtf8().constData());
+        return 2;
+    }
+
+    lua_pushboolean(L, true);
+    return 1;
 }
 
 // Documentation: https://wiki.mudlet.org/w/Manual:Lua_Functions#getMapEvents
 int TLuaInterpreter::getMapEvents(lua_State* L)
 {
     Host& host = getHostFromLua(L);
-    if (host.mpMap) {
-        if (host.mpMap->mpMapper) {
-            if (host.mpMap->mpMapper->mp2dMap) {
-                // create the result table
-                lua_newtable(L);
-                QMapIterator<QString, QStringList> it(host.mpMap->mpMapper->mp2dMap->mUserActions);
-                while (it.hasNext()) {
-                    it.next();
-                    QStringList eventInfo = it.value();
-                    lua_createtable(L, 0, 4);
-                    lua_pushstring(L, eventInfo.at(0).toUtf8().constData());
-                    lua_setfield(L, -2, "event name");
-                    lua_pushstring(L, eventInfo.at(1).toUtf8().constData());
-                    lua_setfield(L, -2, "parent");
-                    lua_pushstring(L, eventInfo.at(2).toUtf8().constData());
-                    lua_setfield(L, -2, "display name");
-                    lua_createtable(L, eventInfo.length() - 3, 0);
-                    for (int i = 3; i < eventInfo.length(); i++) {
-                        lua_pushinteger(L, i - 2); //lua indexes are 1 based!
-                        lua_pushstring(L, eventInfo.at(i).toUtf8().constData());
-                        lua_settable(L, -3);
-                    }
-                    lua_setfield(L, -2, "arguments");
-
-                    // Add the mapEvent object to the result table
-                    lua_setfield(L, -2, it.key().toUtf8().constData());
-                }
-            }
-            return 1;
-        }
+    if (!host.mpMap || !host.mpMap->mpMapper || !host.mpMap->mpMapper->mp2dMap) {
+        lua_pushnil(L);
+        lua_pushstring(L, "no map present or loaded!");
+        return 2;
     }
-    return 0;
+    // create the result table
+    lua_newtable(L);
+    QMapIterator<QString, QStringList> it(host.mpMap->mpMapper->mp2dMap->mUserActions);
+    while (it.hasNext()) {
+        it.next();
+        QStringList eventInfo = it.value();
+        lua_createtable(L, 0, 4);
+        lua_pushstring(L, eventInfo.at(0).toUtf8().constData());
+        lua_setfield(L, -2, "event name");
+        lua_pushstring(L, eventInfo.at(1).toUtf8().constData());
+        lua_setfield(L, -2, "parent");
+        lua_pushstring(L, eventInfo.at(2).toUtf8().constData());
+        lua_setfield(L, -2, "display name");
+        lua_createtable(L, eventInfo.length() - 3, 0);
+        for (int i = 3; i < eventInfo.length(); ++i) {
+            lua_pushinteger(L, i - 2); //lua indexes are 1 based!
+            lua_pushstring(L, eventInfo.at(i).toUtf8().constData());
+            lua_settable(L, -3);
+        }
+        lua_setfield(L, -2, "arguments");
+
+        // Add the mapEvent object to the result table
+        lua_setfield(L, -2, it.key().toUtf8().constData());
+    }
+    return 1;
 }
 
 // Documentation: https://wiki.mudlet.org/w/Manual:Lua_Functions#centerview
