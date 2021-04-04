@@ -120,7 +120,7 @@ cTelnet::cTelnet(Host* pH, const QString& profileName)
         termType.append(QStringLiteral(APP_BUILD));
     }
 
-    command = "";
+    mCommand.clear();
     // The raw string literals are QByteArrays now not QStrings:
     if (mAcceptableEncodings.isEmpty()) {
         mAcceptableEncodings << "UTF-8";
@@ -183,7 +183,7 @@ void cTelnet::reset()
     // Ensure we do not think that the game server is echoing for us:
     mpHost->mIsRemoteEchoingActive = false;
     mGA_Driver = false;
-    command = "";
+    mCommand.clear(;)
     mMudData = "";
 }
 
@@ -941,9 +941,10 @@ std::tuple<QString, int, bool> cTelnet::getConnectionInfo() const
     }
 }
 
-void cTelnet::processTelnetCommand(const std::string& command)
+void cTelnet::processTelnetCommand()
 {
-    char ch = command[1];
+    // mCommand[0] will be <IAC> (0xFF):
+    char ch = mCommand[1];
 #if defined(DEBUG_TELNET) && (DEBUG_TELNET > 1)
     QString _type;
     switch ((quint8)ch) {
@@ -974,10 +975,10 @@ void cTelnet::processTelnetCommand(const std::string& command)
     default:
         _type = QString::number((quint8)ch);
     }
-    if (command.size() > 2) {
-        qDebug() << "SERVER sent telnet (" << command.size() << " bytes):" << _type << " + " << decodeOption(command[2]);
+    if (mCommand.size() > 2) {
+        qDebug() << "SERVER sent telnet (" << mCommand.size() << " bytes):" << _type << " + " << decodeOption(mCommand[2]);
     } else {
-        qDebug() << "SERVER sent telnet (" << command.size() << " bytes):" << _type;
+        qDebug() << "SERVER sent telnet (" << mCommand.size() << " bytes):" << _type;
     }
 #endif
 
@@ -990,7 +991,7 @@ void cTelnet::processTelnetCommand(const std::string& command)
     }
     case TN_WILL: {
         //server wants to enable some option (or he sends a timing-mark)...
-        option = command[2];
+        option = mCommand[2];
         const auto idxOption = static_cast<size_t>(option);
 #ifdef DEBUG_TELNET
         qDebug().nospace().noquote() << "Server sent telnet IAC WILL " << decodeOption(option);
@@ -1221,7 +1222,7 @@ void cTelnet::processTelnetCommand(const std::string& command)
 
     case TN_WONT: {
         //server refuses to enable some option
-        option = command[2];
+        option = mCommand[2];
         const auto idxOption = static_cast<size_t>(option);
 #ifdef DEBUG_TELNET
         qDebug().nospace().noquote() << "Server sent telnet IAC WONT " << decodeOption(option);
@@ -1304,7 +1305,7 @@ void cTelnet::processTelnetCommand(const std::string& command)
 
     case TN_DO: {
         //server wants us to enable some option
-        option = command[2];
+        option = mCommand[2];
         const auto idxOption = static_cast<size_t>(option);
 #ifdef DEBUG_TELNET
         qDebug().nospace().noquote() << "Server sent telnet IAC DO " << decodeOption(option);
@@ -1421,7 +1422,7 @@ void cTelnet::processTelnetCommand(const std::string& command)
     }
     case TN_DONT: {
         //only respond if value changed or if this option has not been announced yet
-        option = command[2];
+        option = mCommand[2];
         const auto idxOption = static_cast<size_t>(option);
 #ifdef DEBUG_TELNET
         qDebug().nospace().noquote() << "Server sent telnet IAC DONT " << decodeOption(option);
@@ -1481,11 +1482,11 @@ void cTelnet::processTelnetCommand(const std::string& command)
     }
 
     case TN_SB: {
-        option = command[2];
+        option = mCommand[2];
 
         // CHARSET
         if (option == OPT_CHARSET && enableCHARSET) {
-            QByteArray payload = command.c_str();
+            QByteArray payload = mCommand.c_str();
             if (payload.size() < 6) {
                 return;
             }
@@ -1494,7 +1495,7 @@ void cTelnet::processTelnetCommand(const std::string& command)
             payload = payload.mid(3, static_cast<int>(payload.size()) - 5);
 
             // CHARSET support per https://tools.ietf.org/html/rfc2066
-            if (command[3] == CHARSET_REQUEST) {
+            if (mCommand[3] == CHARSET_REQUEST) {
                 if (payload.startsWith("[TTABLE]1")) { // No translate table support.  Discard.
                     payload.remove(0, 9);
                 }
@@ -1559,11 +1560,11 @@ void cTelnet::processTelnetCommand(const std::string& command)
                 output += TN_IAC;
                 output += TN_SE;
                 socketOutRaw(output);
-            } else if (command[3] == CHARSET_ACCEPTED) {
+            } else if (mCommand[3] == CHARSET_ACCEPTED) {
                 // Case unlikely.  Mudlet does not initiate negotiations yet.  Do nothing.
-            } else if (command[3] == CHARSET_REJECTED) {
+            } else if (mCommand[3] == CHARSET_REJECTED) {
                 // Case unlikely.  Mudlet does not initiate negotiations yet.  Do nothing.
-            } else if (command[3] == CHARSET_TTABLE_IS) {
+            } else if (mCommand[3] == CHARSET_TTABLE_IS) {
                 // Mudlet does not support translate tables
                 // Required to respond per the specification
                 std::string output;
@@ -1583,8 +1584,8 @@ void cTelnet::processTelnetCommand(const std::string& command)
         if (option == OPT_MSDP) {
             // Using a QByteArray means there is no consideration of encoding
             // used - it is just bytes...
-            QByteArray rawData = command.c_str();
-            if (command.size() < 6) {
+            QByteArray rawData = mCommand.c_str();
+            if (mCommand.size() < 6) {
                 return;
             }
 
@@ -1599,7 +1600,7 @@ void cTelnet::processTelnetCommand(const std::string& command)
 
         // ATCP
         if (option == OPT_ATCP) {
-            QByteArray payload = command.c_str();
+            QByteArray payload = mCommand.c_str();
             if (payload.size() < 6) {
                 return;
             }
@@ -1679,7 +1680,7 @@ void cTelnet::processTelnetCommand(const std::string& command)
 
         // GMCP
         if (option == OPT_GMCP) {
-            QByteArray payload = command.c_str();
+            QByteArray payload = mCommand.c_str();
             if (payload.size() < 6) {
                 return;
             }
@@ -1695,7 +1696,7 @@ void cTelnet::processTelnetCommand(const std::string& command)
 
         // MSSP
         if (option == OPT_MSSP) {
-            QByteArray payload = command.c_str();
+            QByteArray payload = mCommand.c_str();
             if (payload.size() < 6) {
                 return;
             }
@@ -1711,7 +1712,7 @@ void cTelnet::processTelnetCommand(const std::string& command)
 
         // MSP
         if (option == OPT_MSP) {
-            QByteArray payload = command.c_str();
+            QByteArray payload = mCommand.c_str();
             if (payload.size() < 6) {
                 return;
             }
@@ -1726,7 +1727,7 @@ void cTelnet::processTelnetCommand(const std::string& command)
         }
 
         if (option == OPT_102) {
-            QByteArray payload = command.c_str();
+            QByteArray payload = mCommand.c_str();
             if (payload.size() < 6) {
                 return;
             }
@@ -1740,7 +1741,7 @@ void cTelnet::processTelnetCommand(const std::string& command)
 
         switch (option) { //switch 2
         case OPT_STATUS: {
-            if (command.length() >= 6 && command[3] == TNSB_SEND && command[4] == TN_IAC && command[5] == TN_SE) {
+            if (mCommand.length() >= 6 && mCommand[3] == TNSB_SEND && mCommand[4] == TN_IAC && mCommand[5] == TN_SE) {
                 //request to send all enabled commands; if server sends his
                 //own list of commands, we just ignore it (well, he shouldn't
                 //send anything, as we do not request anything, but there are
@@ -1782,7 +1783,7 @@ void cTelnet::processTelnetCommand(const std::string& command)
         }
 
         case OPT_TERMINAL_TYPE: {
-            if (command.length() >= 6 && command[3] == TNSB_SEND && command[4] == TN_IAC && command[5] == TN_SE) {
+            if (mCommand.length() >= 6 && mCommand[3] == TNSB_SEND && mCommand[4] == TN_IAC && mCommand[5] == TN_SE) {
                 if (myOptionState[static_cast<size_t>(OPT_TERMINAL_TYPE)]) {
                     //server wants us to send terminal type; he can send his own type
                     //too, but we just ignore it, as we have no use for it...
@@ -1818,12 +1819,12 @@ void cTelnet::processTelnetCommand(const std::string& command)
 
     // raise sysTelnetEvent for all unhandled protocols
     // EXCEPT TN_GA / TN_EOR, which come at the end of every transmission, for performance reaons
-    if (command[1] != TN_GA && command[1] != TN_EOR) {
-        auto type = static_cast<unsigned char>(command[1]);
-        auto telnetOption = static_cast<unsigned char>(command[2]);
-        QString msg = command.c_str();
-        if (command.size() >= 6) {
-            msg = msg.mid(3, command.size() - 5);
+    if (mCommand[1] != TN_GA && mCommand[1] != TN_EOR) {
+        auto type = static_cast<unsigned char>(mCommand[1]);
+        auto telnetOption = static_cast<unsigned char>(mCommand[2]);
+        QString msg = mCommand.c_str();
+        if (mCommand.size() >= 6) {
+            msg = msg.mid(3, mCommand.size() - 5);
         }
 
         TEvent event {};
@@ -1837,6 +1838,7 @@ void cTelnet::processTelnetCommand(const std::string& command)
         event.mArgumentTypeList.append(ARGUMENT_TYPE_STRING);
         mpHost->raiseEvent(event);
     }
+    mCommand.clear();
 }
 
 // msg is in the Mud Server encoding
@@ -2633,39 +2635,37 @@ void cTelnet::slot_processReplayChunk()
         if (iac || iac2 || insb || (ch == TN_IAC)) {
             if (!(iac || iac2 || insb) && (ch == TN_IAC)) {
                 iac = true;
-                command += ch;
+                mCommand += ch;
             } else if (iac && (ch == TN_IAC) && (!insb)) {
                 //2. seq. of two IACs
                 iac = false;
                 cleandata += ch;
-                command = "";
+                mCommand.clear();
             } else if (iac && (!insb) && ((ch == TN_WILL) || (ch == TN_WONT) || (ch == TN_DO) || (ch == TN_DONT))) {
                 //3. IAC DO/DONT/WILL/WONT
                 iac = false;
                 iac2 = true;
-                command += ch;
+                mCommand += ch;
             } else if (iac2) {
                 //4. IAC DO/DONT/WILL/WONT <command code>
                 iac2 = false;
-                command += ch;
-                processTelnetCommand(command);
-                command = "";
+                mCommand += ch;
+                processTelnetCommand();
             } else if (iac && (!insb) && (ch == TN_SB)) {
                 //5. IAC SB
                 iac = false;
                 insb = true;
-                command += ch;
+                mCommand += ch;
             } else if (iac && (!insb) && (ch == TN_SE)) {
                 //6. IAC SE without IAC SB - error - ignored
-                command = "";
+                mCommand.clear();
                 iac = false;
             } else if (insb) {
                 //7. inside IAC SB
-                command += ch;
+                mCommand += ch;
                 if (iac && (ch == TN_SE)) //IAC SE - end of subcommand
                 {
-                    processTelnetCommand(command);
-                    command = "";
+                    processTelnetCommand();
                     iac = false;
                     insb = false;
                 }
@@ -2678,10 +2678,9 @@ void cTelnet::slot_processReplayChunk()
             //8. IAC fol. by something else than IAC, SB, SE, DO, DONT, WILL, WONT
             {
                 iac = false;
-                command += ch;
-                processTelnetCommand(command);
+                mCommand += ch;
+                processTelnetCommand();
                 //this could have set receivedGA to true; we'll handle that later
-                command = "";
             }
         } else {
             if (ch != '\r' && ch != '\0') {
@@ -2763,31 +2762,30 @@ void cTelnet::processSocketData(char* in_buffer, int amount)
             if (iac || iac2 || insb || (ch == TN_IAC)) {
                 if (!(iac || iac2 || insb) && (ch == TN_IAC)) {
                     iac = true;
-                    command += ch;
+                    mCommand += ch;
                 } else if (iac && (ch == TN_IAC) && (!insb)) {
                     //2. seq. of two IACs
                     iac = false;
                     cleandata += ch;
-                    command = "";
+                    mCommand.clear();
                 } else if (iac && (!insb) && ((ch == TN_WILL) || (ch == TN_WONT) || (ch == TN_DO) || (ch == TN_DONT))) {
                     //3. IAC DO/DONT/WILL/WONT
                     iac = false;
                     iac2 = true;
-                    command += ch;
+                    mCommand += ch;
                 } else if (iac2) {
                     //4. IAC DO/DONT/WILL/WONT <command code>
                     iac2 = false;
-                    command += ch;
-                    processTelnetCommand(command);
-                    command = "";
+                    mCommand += ch;
+                    processTelnetCommand();
                 } else if (iac && (!insb) && (ch == TN_SB)) {
                     //5. IAC SB
                     iac = false;
                     insb = true;
-                    command += ch;
+                    mCommand += ch;
                 } else if (iac && (!insb) && (ch == TN_SE)) {
                     //6. IAC SE without IAC SB - error - ignored
-                    command = "";
+                    mCommand.clear();
                     iac = false;
                 } else if (insb) {
                     // IAC SB COMPRESS WILL SE for MCCP v1 (unterminated invalid telnet sequence)
@@ -2827,38 +2825,37 @@ void cTelnet::processSocketData(char* in_buffer, int amount)
                                 // compressed data starts in clean state
                                 iac = false;
                                 insb = false;
-                                command = "";
+                                mCommand.clear();
                                 goto MAIN_LOOP_END;
                             }
                         }
                     }
                     //7. inside IAC SB
 
-                    command += ch;
+                    mCommand += ch;
                     if (iac && (ch == TN_SE)) { //IAC SE - end of subcommand
-                        processTelnetCommand(command);
-                        command = "";
+                        processTelnetCommand();
                         iac = false;
                         insb = false;
                     } else if (iac && (ch == TN_IAC)) { // escaped TN_IAC
-                        command.pop_back();
+                        mCommand.pop_back();
                         iac = false;
                     } else if (iac) {
                         // Telnet options within a subcommand are not supported.
                         // We assume that the SE went missing, possibly due to a
                         // server bug, and try to recover.
                         // Cf. https://github.com/Mudlet/Mudlet/issues/4385
-                        command.pop_back();
-                        command += TN_SE;
-                        processTelnetCommand(command);
+                        mCommand.pop_back();
+                        mCommand += TN_SE;
+                        processTelnetCommand();
                         if (!mIncompleteSB) {
                             mIncompleteSB = true;
-                            qWarning(R"("TELNET: the server did not properly complete a subnegotiation (code %02x).\nSome data loss is likely - please mention this problem to the game admins.)",command[2]);
+                            qWarning(R"("TELNET: the server did not properly complete a subnegotiation (code %02x).\nSome data loss is likely - please mention this problem to the game admins.)",mCommand[2]);
                         }
 
 
                         // Re-enter the state machine.
-                        command = TN_IAC;
+                        mCommand = TN_IAC;
                         iac = true;
                         insb = false;
                         i -= 1;
@@ -2869,10 +2866,9 @@ void cTelnet::processSocketData(char* in_buffer, int amount)
                 //8. IAC fol. by something else than IAC, SB, SE, DO, DONT, WILL, WONT
                 {
                     iac = false;
-                    command += ch;
-                    processTelnetCommand(command);
+                    mCommand += ch;
+                    processTelnetCommand();
                     //this could have set receivedGA to true; we'll handle that later
-                    command = "";
                 }
             } else {
                 if (ch == TN_BELL) {

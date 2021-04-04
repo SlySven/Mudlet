@@ -231,7 +231,7 @@ private:
     int decompressBuffer(char*& in_buffer, int& length, char* out_buffer);
     void reset();
 
-    void processTelnetCommand(const std::string& command);
+    void processTelnetCommand();
     void sendTelnetOption(char type, char option);
     void gotRest(std::string&);
     void gotPrompt(std::string&);
@@ -261,7 +261,7 @@ private:
     z_stream mZstream;
 
     bool mNeedDecompression;
-    std::string command;
+    std::string mCommand;
     bool iac;
     bool iac2;
     bool insb;
