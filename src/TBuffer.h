@@ -4,7 +4,7 @@
 /***************************************************************************
  *   Copyright (C) 2008-2013 by Heiko Koehn - KoehnHeiko@googlemail.com    *
  *   Copyright (C) 2014 by Ahmed Charles - acharles@outlook.com            *
- *   Copyright (C) 2015, 2017-2018, 2020 by Stephen Lyons                  *
+ *   Copyright (C) 2015, 2017-2018, 2020-2021 by Stephen Lyons             *
  *                                               - slysven@virginmedia.com *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -190,7 +190,30 @@ public:
     // is apparently incompatible with using a default constructor - sigh!
     void encodingChanged(const QByteArray &);
     static int lengthInGraphemes(const QString& text);
+    QString encodeRawBytesToHidden(const unsigned char&) const;
 
+    /*
+     * These are not characters! They are from a range of Unicode Codepoints
+     * that are reserved for internal purposes and we are going to use them to
+     * embed the hexadecimal values of raw bytes for incoming data that we
+     * cannot decode in the current encoding.
+     */
+    inline static const QChar rawNibble_0{QChar(0xFDD0)};
+    inline static const QChar rawNibble_1{QChar(0xFDD1)};
+    inline static const QChar rawNibble_2{QChar(0xFDD2)};
+    inline static const QChar rawNibble_3{QChar(0xFDD3)};
+    inline static const QChar rawNibble_4{QChar(0xFDD4)};
+    inline static const QChar rawNibble_5{QChar(0xFDD5)};
+    inline static const QChar rawNibble_6{QChar(0xFDD6)};
+    inline static const QChar rawNibble_7{QChar(0xFDD7)};
+    inline static const QChar rawNibble_8{QChar(0xFDD8)};
+    inline static const QChar rawNibble_9{QChar(0xFDD9)};
+    inline static const QChar rawNibble_A{QChar(0xFDDA)};
+    inline static const QChar rawNibble_B{QChar(0xFDDB)};
+    inline static const QChar rawNibble_C{QChar(0xFDDC)};
+    inline static const QChar rawNibble_D{QChar(0xFDDD)};
+    inline static const QChar rawNibble_E{QChar(0xFDDE)};
+    inline static const QChar rawNibble_F{QChar(0xFDDF)};
 
     std::deque<TChar> bufferLine;
     std::deque<std::deque<TChar>> buffer;
@@ -213,9 +236,9 @@ private:
     void shrinkBuffer();
     int calculateWrapPosition(int lineNumber, int begin, int end);
     void handleNewLine();
-    bool processUtf8Sequence(const std::string&, bool, size_t, size_t&, bool&);
-    bool processGBSequence(const std::string&, bool, bool, size_t, size_t&, bool&);
-    bool processBig5Sequence(const std::string&, bool, size_t, size_t&, bool&);
+    bool processUtf8Sequence(const std::string&, bool, size_t, size_t&, quint8&);
+    bool processGBSequence(const std::string&, bool, bool, size_t, size_t&, quint8&);
+    bool processBig5Sequence(const std::string&, bool, size_t, size_t&, quint8&);
     void decodeSGR(const QString&);
     void decodeSGR38(const QStringList&, bool isColonSeparated = true);
     void decodeSGR48(const QStringList&, bool isColonSeparated = true);

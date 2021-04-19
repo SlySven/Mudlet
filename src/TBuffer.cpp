@@ -1,7 +1,7 @@
 /***************************************************************************
  *   Copyright (C) 2008-2013 by Heiko Koehn - KoehnHeiko@googlemail.com    *
  *   Copyright (C) 2014 by Ahmed Charles - acharles@outlook.com            *
- *   Copyright (C) 2014-2018, 2020 by Stephen Lyons                        *
+ *   Copyright (C) 2014-2018, 2020-2021 by Stephen Lyons                   *
  *                                               - slysven@virginmedia.com *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -771,39 +771,51 @@ COMMIT_LINE:
         }
 
         // PLACEMARKER: Incoming text decoding
-        // Used to double up the TChars for Utf-8 byte sequences that produce
-        // a surrogate pair (non-BMP):
-        bool isTwoTCharsNeeded = false;
-
+        // Used to increase the TChars for byte sequences that produce
+        // a surrogate pair (non-BMP) or have undecodable bytes that get turned
+        // into (normally hidden) Non-character sequences that need extra one or
+        // more TChars to match. To search for the resulting hidden sequences
+        // following the replacement character we can plug the following into a
+        // PCRE:
+        // "\x{fffd}[\x{fdd0}-\x{fddf}]+"
+        quint8 extraTCharsNeeded = 0;
         if (!encodingLookupTable.isEmpty()) {
             auto index = static_cast<quint8>(ch);
             if (index < 128) {
                 mMudLine.append(QChar::fromLatin1(ch));
             } else {
-                mMudLine.append(encodingLookupTable.at(index - 128));
+                auto character = encodingLookupTable.at(index - 128);
+                mMudLine.append(character);
+                if (character == QChar(0xFFFD)) {
+                    // If the replacement character is used it means the byte is
+                    // not encoded - so embed the raw byte (as a pair of
+                    // non-characters) after it:
+                    mMudLine.append(encodeRawBytesToHidden(index));
+                    extraTCharsNeeded = 2;
+                }
             }
         } else if (mEncoding == "ISO 8859-1") {
             mMudLine.append(QString(QChar::fromLatin1(ch)));
         } else if (mEncoding == "GBK") {
-            if (!processGBSequence(localBuffer, isFromServer, false, localBufferLength, localBufferPosition, isTwoTCharsNeeded)) {
+            if (!processGBSequence(localBuffer, isFromServer, false, localBufferLength, localBufferPosition, extraTCharsNeeded)) {
                 // We have run out of bytes and we have stored the unprocessed
                 // ones but we need to bail out NOW!
                 return;
             }
         } else if (mEncoding == "GB18030") {
-            if (!processGBSequence(localBuffer, isFromServer, true, localBufferLength, localBufferPosition, isTwoTCharsNeeded)) {
+            if (!processGBSequence(localBuffer, isFromServer, true, localBufferLength, localBufferPosition, extraTCharsNeeded)) {
                 // We have run out of bytes and we have stored the unprocessed
                 // ones but we need to bail out NOW!
                 return;
             }
         } else if (mEncoding == "BIG5" || mEncoding == "BIG5-HKSCS") {
-            if (!processBig5Sequence(localBuffer, isFromServer, localBufferLength, localBufferPosition, isTwoTCharsNeeded)) {
+            if (!processBig5Sequence(localBuffer, isFromServer, localBufferLength, localBufferPosition, extraTCharsNeeded)) {
                 // We have run out of bytes and we have stored the unprocessed
                 // ones but we need to bail out NOW!
                 return;
             }
         } else if (mEncoding == "UTF-8") {
-            if (!processUtf8Sequence(localBuffer, isFromServer, localBufferLength, localBufferPosition, isTwoTCharsNeeded)) {
+            if (!processUtf8Sequence(localBuffer, isFromServer, localBufferLength, localBufferPosition, extraTCharsNeeded)) {
                 // We have run out of bytes and we have stored the unprocessed
                 // ones but we need to bail out NOW!
                 return;
@@ -846,13 +858,10 @@ COMMIT_LINE:
             c.mBgColor = mpHost->mMxpClient.getBgColor();
         }
 
-        if (isTwoTCharsNeeded) {
-            // CHECK: Do we need to duplicate stuff for mMXP_LINK_MODE - yes I think we do:
-            mMudBuffer.push_back(c);
-            mMudBuffer.push_back(c);
-        } else {
+        for (quint8 i = 0; i < extraTCharsNeeded; ++i) {
             mMudBuffer.push_back(c);
         }
+        mMudBuffer.push_back(c);
 
         ++localBufferPosition;
     }
@@ -3312,7 +3321,7 @@ QString TBuffer::bufferToHtml(const bool showTimeStamp /*= false*/, const int ro
     return s;
 }
 
-bool TBuffer::processUtf8Sequence(const std::string& bufferData, const bool isFromServer, const size_t len, size_t& pos, bool& isNonBMPCharacter)
+bool TBuffer::processUtf8Sequence(const std::string& bufferData, const bool isFromServer, const size_t len, size_t& pos, quint8& extraTCharsNeeded)
 {
     // In Utf-8 mode we have to process the data more than one byte at a
     // time because there is not necessarily a one-byte to one TChar
@@ -3342,8 +3351,8 @@ bool TBuffer::processUtf8Sequence(const std::string& bufferData, const bool isFr
             // Not enough bytes left in bufferData to complete the utf-8
             // sequence - need to save and prepend onto incoming data next
             // time around.
-            // The absence of a second argument takes all the available
-            // bytes - this is only for data from the Server NOT from
+            // The absence of a second argument to substr() takes all the
+            // available bytes - this is only for data from the Server NOT from
             // locally generated material from Lua feedTriggers(...)
             if (isFromServer) {
 #if defined(DEBUG_UTF8_PROCESSING)
@@ -3356,9 +3365,14 @@ bool TBuffer::processUtf8Sequence(const std::string& bufferData, const bool isFr
         }
 
         // If we have got here we have enough bytes to work with:
+        // Assume things are okay until we know otherwise:
         bool isValid = true;
+        // Used to fill-in when we can't decode a sequence - and now will be
+        // followed by the (hidden as non-characters) hex nibbles of each
+        // undecodable bytes (in rawBytes):
         bool isToUseReplacementMark = false;
-        bool isToUseByteOrderMark = false; // When BOM seen in stream it transcodes as zero characters
+        // When BOM is seen in stream it transcodes as zero characters
+        bool isToUseByteOrderMark = false;
         switch (utf8SequenceLength) {
         case 4:
             if ((bufferData.at(pos + 3) & 0xC0) != 0x80) {
@@ -3368,19 +3382,19 @@ bool TBuffer::processUtf8Sequence(const std::string& bufferData, const bool isFr
                 isValid = false;
                 isToUseReplacementMark = true;
             } else if (((bufferData.at(pos) & 0x07) > 0x04) || (((bufferData.at(pos) & 0x07) == 0x04) && ((bufferData.at(pos + 1) & 0x3F) > 0x0F))) {
-// For 4 byte values the bits are distributed:
-//  Byte 1    Byte 2    Byte 3    Byte 4
-// 11110ABC  10DEFGHI  10JKLMNO  10PQRSTU   A is MSB
-// U+10FFFF in binary is: 1 0000 1111 1111 1111 1111
-// So this (the maximum valid character) is:
-//      ABC    DEFGHI    JKLMNO    PQRSTU
-//      100    001111    111111    111111
-// So if the first byte bufferData.at(pos] & 0x07 is:
-//  < 0x04 then must be in range
-//  > 0x04 then must be out of range
-// == 0x04 then consider bufferData.at(pos+1] & 0x3F:
-//     <= 001111 0x0F then must be in range
-//      > 001111 0x0F then must be out of range
+            // For 4 byte values the bits are distributed:
+            //  Byte 1    Byte 2    Byte 3    Byte 4
+            // 11110ABC  10DEFGHI  10JKLMNO  10PQRSTU   A is MSB
+            // U+10FFFF in binary is: 1 0000 1111 1111 1111 1111
+            // So this (the maximum valid character) is:
+            //      ABC    DEFGHI    JKLMNO    PQRSTU
+            //      100    001111    111111    111111
+            // So if the first byte bufferData.at(pos] & 0x07 is:
+            //  < 0x04 then must be in range
+            //  > 0x04 then must be out of range
+            // == 0x04 then consider bufferData.at(pos+1] & 0x3F:
+            //     <= 001111 0x0F then must be in range
+            //      > 001111 0x0F then must be out of range
 
 #if defined(DEBUG_UTF8_PROCESSING)
                 qDebug() << "TBuffer::processUtf8Sequence(...) 4 byte UTF-8 sequence is valid but is beyond range of legal codepoints!";
@@ -3389,7 +3403,7 @@ bool TBuffer::processUtf8Sequence(const std::string& bufferData, const bool isFr
                 isToUseReplacementMark = true;
             }
 
-        // Fall-through
+            // Fall-through
             [[fallthrough]];
         case 3:
             if ((bufferData.at(pos + 2) & 0xC0) != 0x80) {
@@ -3399,33 +3413,33 @@ bool TBuffer::processUtf8Sequence(const std::string& bufferData, const bool isFr
                 isValid = false;
                 isToUseReplacementMark = true;
             } else if ((bufferData.at(pos) & 0x0F) == 0x0D) {
-// For 3 byte values the bits are distributed:
-//  Byte 1    Byte 2    Byte 3
-// 1110ABCD  10DEFGHI  10JKLMNO   A is MSB
-// First High surrogate 0xed 0xa0 0x80 (U+D800)
-// 1101 1000 0000 0000
-// ----1101  --100000  --000000
-// Last Low surrogate 0xed 0xbf 0xbf (U+DFFF)
-// 1101 1111 1111 1111
-// ----1101  --111111  --111111
+            // For 3 byte values the bits are distributed:
+            //  Byte 1    Byte 2    Byte 3
+            // 1110ABCD  10DEFGHI  10JKLMNO   A is MSB
+            // First High surrogate 0xed 0xa0 0x80 (U+D800)
+            // 1101 1000 0000 0000
+            // ----1101  --100000  --000000
+            // Last Low surrogate 0xed 0xbf 0xbf (U+DFFF)
+            // 1101 1111 1111 1111
+            // ----1101  --111111  --111111
 /*
-    * As per Wikipedia {https://en.wikipedia.org/wiki/UTF-16#U.2BD800_to_U.2BDFFF}
-    * "The Unicode standard permanently reserves these code point values for UTF-16
-    * encoding of the high and low surrogates, and they will never be assigned a
-    * character, so there should be no reason to encode them. The official Unicode
-    * standard says that no UTF forms, including UTF-16, can encode these code
-    * points.
-    *
-    * However UCS-2, UTF-8, and UTF-32 can encode these code points in trivial and
-    * obvious ways, and large amounts of software does so even though the standard
-    * states that such arrangements should be treated as encoding errors. It is
-    * possible to unambiguously encode them in UTF-16 by using a code unit equal to
-    * the code point, as long as no sequence of two code units can be interpreted
-    * as a legal surrogate pair (that is, as long as a high surrogate is never
-    * followed by a low surrogate). The majority of UTF-16 encoder and decoder
-    * implementations translate between encodings as though this were the case
-    * and Windows allows such sequences in filenames."
-    */
+ * As per Wikipedia {https://en.wikipedia.org/wiki/UTF-16#U.2BD800_to_U.2BDFFF}
+ * "The Unicode standard permanently reserves these code point values for UTF-16
+ * encoding of the high and low surrogates, and they will never be assigned a
+ * character, so there should be no reason to encode them. The official Unicode
+ * standard says that no UTF forms, including UTF-16, can encode these code
+ * points.
+ *
+ * However UCS-2, UTF-8, and UTF-32 can encode these code points in trivial and
+ * obvious ways, and large amounts of software does so even though the standard
+ * states that such arrangements should be treated as encoding errors. It is
+ * possible to unambiguously encode them in UTF-16 by using a code unit equal to
+ * the code point, as long as no sequence of two code units can be interpreted
+ * as a legal surrogate pair (that is, as long as a high surrogate is never
+ * followed by a low surrogate). The majority of UTF-16 encoder and decoder
+ * implementations translate between encodings as though this were the case
+ * and Windows allows such sequences in filenames."
+ */
 // So test for and reject if LSN of first byte is 0xD!
 #if defined(DEBUG_UTF8_PROCESSING)
                 qDebug() << "TBuffer::processUtf8Sequence(...) 3 byte UTF-8 sequence is a High or Low UTF-16 Surrogate and is not valid in UTF-8!";
@@ -3481,8 +3495,9 @@ bool TBuffer::processUtf8Sequence(const std::string& bufferData, const bool isFr
             isToUseReplacementMark = true;
         }
 
-        // Will be one (BMP codepoint) or two (non-BMP codepoints) QChar(s)
         if (isValid) {
+            // codePoint will be one (BMP codepoint) or two (non-BMP codepoints)
+            // QChar(s):
             QString codePoint = QString(bufferData.substr(pos, utf8SequenceLength).c_str());
             switch (codePoint.size()) {
             default:
@@ -3493,7 +3508,9 @@ bool TBuffer::processUtf8Sequence(const std::string& bufferData, const bool isFr
                 isToUseReplacementMark = true;
                 break;
             case 2:
-                isNonBMPCharacter = true;
+                // A non-BMP codepoint needs 2 QChars to encode it so we need an
+                // extra TChar to match:
+                extraTCharsNeeded = 1;
                 // Fall-through
                 [[fallthrough]];
             case 1:
@@ -3520,8 +3537,22 @@ bool TBuffer::processUtf8Sequence(const std::string& bufferData, const bool isFr
             qDebug().nospace() << "    Sequence bytes are: " << debugMsg;
 #endif
             if (isToUseReplacementMark) {
+                // If there is a problem in the decoding we want to record the hex
+                // values of the raw bytes for later display:
+                QString rawBytes;
                 mMudLine.append(QChar::ReplacementCharacter);
+                for (const auto rawByte : bufferData.substr(pos, utf8SequenceLength)) {
+                    rawBytes.append(encodeRawBytesToHidden(rawByte));
+                }
+                mMudLine.append(rawBytes);
+                // The replacement character is a single QChar and it takes the
+                // space/index that is expected for a single BMP encoded in the
+                // sequence, each rawByte though will contribute 2 hex-digits
+                // which are encoded as specific non-character codepoints so
+                // they need the same number of extra TChars:
+                extraTCharsNeeded = rawBytes.size();
             } else if (isToUseByteOrderMark) {
+                // Technically this is valid but we have to handle it specially:
                 mMudLine.append(QChar::ByteOrderMark);
             }
         }
@@ -3537,7 +3568,7 @@ bool TBuffer::processUtf8Sequence(const std::string& bufferData, const bool isFr
     return true;
 }
 
-bool TBuffer::processGBSequence(const std::string& bufferData, const bool isFromServer, const bool isGB18030, const size_t len, size_t& pos, bool& isNonBmpCharacter)
+bool TBuffer::processGBSequence(const std::string& bufferData, const bool isFromServer, const bool isGB18030, const size_t len, size_t& pos, quint8& extraTCharsNeeded)
 {
 // In GBK/GB18030 mode we have to process the data more than one byte at a
 // time because there is not necessarily a one-byte to one TChar
@@ -3560,7 +3591,7 @@ bool TBuffer::processGBSequence(const std::string& bufferData, const bool isFrom
     bool isToUseReplacementMark = false;
     // Only set this if we are adding more than one code-point to
     // mCurrentLineCharacters:
-    isNonBmpCharacter = false;
+    extraTCharsNeeded = 0;
     if (static_cast<quint8>(bufferData.at(pos)) < 0x80) {
         // Is ASCII - single byte character, straight forward for a "first" byte case
         mMudLine.append(bufferData.at(pos));
@@ -3931,7 +3962,7 @@ bool TBuffer::processGBSequence(const std::string& bufferData, const bool isFrom
                 isToUseReplacementMark = true;
                 break;
             case 2:
-                isNonBmpCharacter = true;
+                extraTCharsNeeded = 1;
             // Fall-through
                 [[fallthrough]];
             case 1:
@@ -3963,7 +3994,20 @@ bool TBuffer::processGBSequence(const std::string& bufferData, const bool isFrom
         qDebug().nospace() << "    Sequence bytes are: " << debugMsg;
 #endif
         if (isToUseReplacementMark) {
+            // If there is a problem in the decoding we want to record the hex
+            // values of the raw bytes for later display:
+            QString rawBytes;
             mMudLine.append(QChar::ReplacementCharacter);
+            for (const auto rawByte : bufferData.substr(pos, gbSequenceLength)) {
+                rawBytes.append(encodeRawBytesToHidden(rawByte));
+            }
+            mMudLine.append(rawBytes);
+            // The replacement character is a single QChar and it takes the
+            // space/index that is expected for a single BMP encoded in the
+            // sequence, each rawByte though will contribute 2 hex-digits
+            // which are encoded as specific non-character codepoints so
+            // they need the same number of extra TChars:
+            extraTCharsNeeded = rawBytes.size();
         }
     }
 
@@ -3974,7 +4018,7 @@ bool TBuffer::processGBSequence(const std::string& bufferData, const bool isFrom
     return true;
 }
 
-bool TBuffer::processBig5Sequence(const std::string& bufferData, const bool isFromServer, const size_t len, size_t& pos, bool& isNonBmpCharacter)
+bool TBuffer::processBig5Sequence(const std::string& bufferData, const bool isFromServer, const size_t len, size_t& pos, quint8& extraTCharsNeeded)
 {
 #if defined(DEBUG_BIG5_PROCESSING)
     std::string dataIdentity;
@@ -3986,7 +4030,7 @@ bool TBuffer::processBig5Sequence(const std::string& bufferData, const bool isFr
     bool isToUseReplacementMark = false;
     // Only set this if we are adding more than one code-point to
     // mCurrentLineCharacters:
-    isNonBmpCharacter = false;
+    extraTCharsNeeded = 0;
     if (static_cast<quint8>(bufferData.at(pos)) < 0x80) {
         // Is ASCII - single byte character, straight forward for a "first" byte case
         mMudLine.append(bufferData.at(pos));
@@ -3994,7 +4038,9 @@ bool TBuffer::processBig5Sequence(const std::string& bufferData, const bool isFr
         // there is no need to tweak pos in THIS case
 
         return true;
-    } else if (static_cast<quint8>(bufferData.at(pos)) == 0x80 || static_cast<quint8>(bufferData.at(pos)) > 0xFE) {
+    }
+
+    if (static_cast<quint8>(bufferData.at(pos)) == 0x80 || static_cast<quint8>(bufferData.at(pos)) > 0xFE) {
         // Invalid as first byte
         isValid = false;
         isToUseReplacementMark = true;
@@ -4015,16 +4061,15 @@ bool TBuffer::processBig5Sequence(const std::string& bufferData, const bool isFr
                 mIncompleteSequenceBytes = bufferData.substr(pos);
             }
             return false; // Bail out
-        } else {
-            // check if second byte range is valid
-            auto val2 = static_cast<quint8>(bufferData.at(pos + 1));
-            if (val2 < 0x40 || (val2 > 0x7E && val2 < 0xA1) || val2 > 0xFE) {
-                // second byte range is invalid
-                isValid = false;
-                isToUseReplacementMark = true;
-            }
         }
 
+        // check if second byte range is valid
+        auto val2 = static_cast<quint8>(bufferData.at(pos + 1));
+        if (val2 < 0x40 || (val2 > 0x7E && val2 < 0xA1) || val2 > 0xFE) {
+            // second byte range is invalid
+            isValid = false;
+            isToUseReplacementMark = true;
+        }
     }
 
     // At this point we know how many bytes to consume, and whether they are in
@@ -4048,6 +4093,7 @@ bool TBuffer::processBig5Sequence(const std::string& bufferData, const bool isFr
                     isToUseReplacementMark = true;
                     break;
                 case 2:
+                    extraTCharsNeeded = 1;
                     // Fall-through
                     [[fallthrough]];
                 case 1:
@@ -4088,7 +4134,20 @@ bool TBuffer::processBig5Sequence(const std::string& bufferData, const bool isFr
         qDebug().nospace() << "    Invalid.  Sequence bytes are: " << debugMsg;
 #endif
         if (isToUseReplacementMark) {
+            // If there is a problem in the decoding we want to record the hex
+            // values of the raw bytes for later display:
+            QString rawBytes;
             mMudLine.append(QChar::ReplacementCharacter);
+            for (const auto rawByte : bufferData.substr(pos, big5SequenceLength)) {
+                rawBytes.append(encodeRawBytesToHidden(rawByte));
+            }
+            mMudLine.append(rawBytes);
+            // The replacement character is a single QChar and it takes the
+            // space/index that is expected for a single BMP encoded in the
+            // sequence, each rawByte though will contribute 2 hex-digits
+            // which are encoded as specific non-character codepoints so
+            // they need the same number of extra TChars:
+            extraTCharsNeeded = rawBytes.size();
         }
     }
 
@@ -4138,4 +4197,50 @@ int TBuffer::lengthInGraphemes(const QString& text)
 const QList<QByteArray> TBuffer::getEncodingNames()
 {
      return csmEncodingTable.getEncodingNames();
+}
+
+QString TBuffer::encodeRawBytesToHidden(const unsigned char& byte) const
+{
+    QChar highNibble;
+    // clang-format off
+    switch ((byte & 0xf0) >> 4) {
+    case 0:     highNibble = rawNibble_0;   break;
+    case 1:     highNibble = rawNibble_1;   break;
+    case 2:     highNibble = rawNibble_2;   break;
+    case 3:     highNibble = rawNibble_3;   break;
+    case 4:     highNibble = rawNibble_4;   break;
+    case 5:     highNibble = rawNibble_5;   break;
+    case 6:     highNibble = rawNibble_6;   break;
+    case 7:     highNibble = rawNibble_7;   break;
+    case 8:     highNibble = rawNibble_8;   break;
+    case 9:     highNibble = rawNibble_9;   break;
+    case 10:    highNibble = rawNibble_A;   break;
+    case 11:    highNibble = rawNibble_B;   break;
+    case 12:    highNibble = rawNibble_C;   break;
+    case 13:    highNibble = rawNibble_D;   break;
+    case 14:    highNibble = rawNibble_E;   break;
+    case 15:    highNibble = rawNibble_F;   break;
+    }
+
+    QChar lowNibble;
+    switch ((byte & 0xf0) >> 4) {
+    case 0:     lowNibble = rawNibble_0;    break;
+    case 1:     lowNibble = rawNibble_1;    break;
+    case 2:     lowNibble = rawNibble_2;    break;
+    case 3:     lowNibble = rawNibble_3;    break;
+    case 4:     lowNibble = rawNibble_4;    break;
+    case 5:     lowNibble = rawNibble_5;    break;
+    case 6:     lowNibble = rawNibble_6;    break;
+    case 7:     lowNibble = rawNibble_7;    break;
+    case 8:     lowNibble = rawNibble_8;    break;
+    case 9:     lowNibble = rawNibble_9;    break;
+    case 10:    lowNibble = rawNibble_A;    break;
+    case 11:    lowNibble = rawNibble_B;    break;
+    case 12:    lowNibble = rawNibble_C;    break;
+    case 13:    lowNibble = rawNibble_D;    break;
+    case 14:    lowNibble = rawNibble_E;    break;
+    case 15:    lowNibble = rawNibble_F;    break;
+    }
+    // clang-format on
+    return highNibble % lowNibble;
 }
