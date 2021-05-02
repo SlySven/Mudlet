@@ -55,7 +55,6 @@ dlgPackageExporter::dlgPackageExporter(QWidget *parent, Host* pHost)
 {
     ui->setupUi(this);
     ui->splitter_metadataAssets->hide();
-    //    ui->splitter_metadata->setSizes({})
     ui->Icon->hide();
 
     mpExportSelection = ui->treeWidget_exportSelection;
@@ -75,7 +74,9 @@ dlgPackageExporter::dlgPackageExporter(QWidget *parent, Host* pHost)
     mpExportSelection->addTopLevelItem(mpKeys);
     mpExportSelection->addTopLevelItem(mpButtons);
 
+    mpExportSelection->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(mpExportSelection, &QTreeWidget::itemChanged, this, &dlgPackageExporter::slot_recountItems);
+    connect(mpExportSelection, &QTreeWidget::customContextMenuRequested, this, &dlgPackageExporter::slot_rightClickOnItems);
 
     mCancelButton = ui->buttonBox->button(QDialogButtonBox::Cancel);
     // make sure the Cancel button doesn't close the dialog
@@ -307,12 +308,14 @@ void dlgPackageExporter::slot_packageChanged(int index)
 void dlgPackageExporter::slot_updateLocationPlaceholder()
 {
     const auto packageName = ui->lineEdit_packageName->text();
+    QString path;
     if (packageName.isEmpty()) {
-        ui->lineEdit_filePath->setPlaceholderText(tr("Export to %1").arg(getActualPath()));
-        return;
+        path = tr("Export to %1").arg(getActualPath());
+    } else {
+        path = tr("Export to %1").arg(QStringLiteral("%1/%2.mpackage").arg(getActualPath(), packageName));
     }
 
-    ui->lineEdit_filePath->setPlaceholderText(tr("Export to %1/%2.mpackage").arg(getActualPath(), packageName));
+    ui->lineEdit_filePath->setPlaceholderText(path);
 }
 
 void dlgPackageExporter::slot_enableExportButton(const QString& text)
@@ -499,19 +502,19 @@ void dlgPackageExporter::slot_export_package()
 
     if (!imageList.isEmpty()) {
         //Create description image dir
-        QString descriptionImageDirName = QStringLiteral("%1.mudlet/description_images/").arg(tempPath);
-        QDir descriptionImageDir = QDir(descriptionImageDirName);
+        QString descriptionImagesDirName = QStringLiteral("%1.mudlet/description_images/").arg(tempPath);
+        QDir descriptionImageDir = QDir(descriptionImagesDirName);
         if (!descriptionImageDir.exists()) {
-            descriptionImageDir.mkpath(descriptionImageDirName);
+            descriptionImageDir.mkpath(descriptionImagesDirName);
         }
         for (int i = imageList.size() - 1; i >= 0; i--) {
             QFileInfo imageFile(imageList.at(i));
             if (imageFile.exists()) {
-                QString imageDir = descriptionImageDirName;
+                QString imageDir = descriptionImagesDirName;
                 imageDir.append(imageFile.fileName());
                 QFile::copy(imageFile.absoluteFilePath(), imageDir);
             }
-            //replace $Imageindex with $packagePath in description file
+            //replace temporary path with the path that is now inside the package
             plainDescription.replace(QStringLiteral("$%1").arg(imageFile.fileName()), QStringLiteral("$packagePath/.mudlet/description_images/%1").arg(imageFile.fileName()));
         }
     }
@@ -528,7 +531,7 @@ void dlgPackageExporter::slot_export_package()
 
     mXmlPathFileName = QStringLiteral("%1/%2.xml").arg(stagingDirName, mPackageName);
 
-    writeConfigFile(stagingDirName, iconFile);
+    writeConfigFile(stagingDirName, iconFile, plainDescription);
 
     QFile checkWriteability(mXmlPathFileName);
     if (!checkWriteability.open(QIODevice::WriteOnly)) {
@@ -738,7 +741,7 @@ void dlgPackageExporter::exportXml(bool& isOk,
         // seen the error message...
     }
 }
-void dlgPackageExporter::writeConfigFile(const QString& stagingDirName, const QFileInfo& iconFile)
+void dlgPackageExporter::writeConfigFile(const QString& stagingDirName, const QFileInfo& iconFile, const QString& packageDescription)
 {
     QStringList dependencies;
     for (int index = 0; index < ui->comboBox_dependencies->count(); index++) {
@@ -750,7 +753,7 @@ void dlgPackageExporter::writeConfigFile(const QString& stagingDirName, const QF
     appendToConfigFile(mPackageConfig, QStringLiteral("author"), ui->lineEdit_author->text());
     appendToConfigFile(mPackageConfig, QStringLiteral("icon"), iconFile.fileName());
     appendToConfigFile(mPackageConfig, QStringLiteral("title"), ui->lineEdit_title->text());
-    appendToConfigFile(mPackageConfig, QStringLiteral("description"), mPlainDescription);
+    appendToConfigFile(mPackageConfig, QStringLiteral("description"), packageDescription);
     appendToConfigFile(mPackageConfig, QStringLiteral("version"), ui->lineEdit_version->text());
     appendToConfigFile(mPackageConfig, QStringLiteral("dependencies"), dependencies.join(","));
     QDateTime iso8601timestamp = QDateTime::currentDateTime();
@@ -797,7 +800,7 @@ std::pair<bool, QString> dlgPackageExporter::copyAssetsToTmp(const QStringList& 
             QFile::remove(filePath);
             QFile::copy(asset.absoluteFilePath(), filePath);
         } else if (asset.isDir()) {
-            copy_directory(asset.absoluteFilePath(), filePath, true);
+            copy_directory(asset.absoluteFilePath(), filePath, false);
         }
     }
 
@@ -978,7 +981,7 @@ dlgPackageExporter::zipPackage(const QString& stagingDirName, const QString& pac
                 return {false, tr("Export cancelled.")};
             }
 
-            QString errorMsg = tr("Failed zip up the package. Error is: \"%1\".",
+            QString errorMsg = tr("Failed to zip up the package. Error is: \"%1\".",
                                   // Intentional comment to separate arguments
                                   "This error message is displayed at the final stage of exporting a package when all the sourced files are finally put into the archive. Unfortunately this may be "
                                   "the point at which something breaks because a problem was not spotted/detected in the process earlier...")
@@ -1081,6 +1084,23 @@ int dlgPackageExporter::countCheckedItems() const
     return count;
 }
 
+void dlgPackageExporter::checkChildren(QTreeWidgetItem* item) const
+{
+    if (!mCheckChildren) {
+        return;
+    }
+    QString packageName = ui->packageList->currentText();
+    auto checkState = item->checkState(0);
+    // Don't check top folder if it has the same name as the package
+    if (item->text(0) == packageName && item->data(0, Qt::UserRole) == isTopFolder) {
+        item->setCheckState(0, Qt::Unchecked);
+    }
+
+    for (int i = 0; i < item->childCount(); i++) {
+        item->child(i)->setCheckState(0, checkState);
+    }
+}
+
 void dlgPackageExporter::recurseTriggers(TTrigger* trig, QTreeWidgetItem* qTrig)
 {
     std::list<TTrigger*>* childList = trig->getChildrenList();
@@ -1097,7 +1117,7 @@ void dlgPackageExporter::recurseTriggers(TTrigger* trig, QTreeWidgetItem* qTrig)
         sl << pChild->getName();
         auto pItem = new QTreeWidgetItem(sl);
         triggerMap.insert(pItem, pChild);
-        pItem->setFlags(Qt::ItemIsUserCheckable | Qt::ItemIsAutoTristate | Qt::ItemIsEnabled | Qt::ItemIsSelectable);
+        pItem->setFlags(Qt::ItemIsUserCheckable | Qt::ItemIsEnabled | Qt::ItemIsSelectable);
         pItem->setCheckState(0, Qt::Unchecked);
         qTrig->addChild(pItem);
         recurseTriggers(pChild, pItem);
@@ -1118,8 +1138,11 @@ void dlgPackageExporter::listTriggers()
         QStringList sl;
         sl << pChild->getName();
         auto pItem = new QTreeWidgetItem(sl);
-        pItem->setFlags(Qt::ItemIsUserCheckable | Qt::ItemIsAutoTristate | Qt::ItemIsEnabled | Qt::ItemIsSelectable);
+        pItem->setFlags(Qt::ItemIsUserCheckable | Qt::ItemIsEnabled | Qt::ItemIsSelectable);
         pItem->setCheckState(0, Qt::Unchecked);
+        if (pChild->isFolder() && pChild->getScript().isEmpty()) {
+            pItem->setData(0, Qt::UserRole, isTopFolder);
+        }
         top->addChild(pItem);
         triggerMap.insert(pItem, pChild);
         recurseTriggers(pChild, pItem);
@@ -1141,7 +1164,7 @@ void dlgPackageExporter::recurseAliases(TAlias* item, QTreeWidgetItem* qItem)
         QStringList sl;
         sl << pChild->getName();
         auto pItem = new QTreeWidgetItem(sl);
-        pItem->setFlags(Qt::ItemIsUserCheckable | Qt::ItemIsAutoTristate | Qt::ItemIsEnabled | Qt::ItemIsSelectable);
+        pItem->setFlags(Qt::ItemIsUserCheckable  | Qt::ItemIsEnabled | Qt::ItemIsSelectable);
         pItem->setCheckState(0, Qt::Unchecked);
         qItem->addChild(pItem);
         aliasMap.insert(pItem, pChild);
@@ -1163,8 +1186,11 @@ void dlgPackageExporter::listAliases()
         QStringList sl;
         sl << pChild->getName();
         auto pItem = new QTreeWidgetItem(sl);
-        pItem->setFlags(Qt::ItemIsUserCheckable | Qt::ItemIsAutoTristate | Qt::ItemIsEnabled | Qt::ItemIsSelectable);
+        pItem->setFlags(Qt::ItemIsUserCheckable  | Qt::ItemIsEnabled | Qt::ItemIsSelectable);
         pItem->setCheckState(0, Qt::Unchecked);
+        if (pChild->isFolder() && pChild->getScript().isEmpty()) {
+            pItem->setData(0, Qt::UserRole, isTopFolder);
+        }
         top->addChild(pItem);
         aliasMap.insert(pItem, pChild);
         recurseAliases(pChild, pItem);
@@ -1183,7 +1209,7 @@ void dlgPackageExporter::recurseScripts(TScript* item, QTreeWidgetItem* qItem)
         QStringList sl;
         sl << pChild->getName();
         auto pItem = new QTreeWidgetItem(sl);
-        pItem->setFlags(Qt::ItemIsUserCheckable | Qt::ItemIsAutoTristate | Qt::ItemIsEnabled | Qt::ItemIsSelectable);
+        pItem->setFlags(Qt::ItemIsUserCheckable | Qt::ItemIsEnabled | Qt::ItemIsSelectable);
         pItem->setCheckState(0, Qt::Unchecked);
         scriptMap.insert(pItem, pChild);
         qItem->addChild(pItem);
@@ -1202,8 +1228,11 @@ void dlgPackageExporter::listScripts()
         QStringList sl;
         sl << pChild->getName();
         auto pItem = new QTreeWidgetItem(sl);
-        pItem->setFlags(Qt::ItemIsUserCheckable | Qt::ItemIsAutoTristate | Qt::ItemIsEnabled | Qt::ItemIsSelectable);
+        pItem->setFlags(Qt::ItemIsUserCheckable | Qt::ItemIsEnabled | Qt::ItemIsSelectable);
         pItem->setCheckState(0, Qt::Unchecked);
+        if (pChild->isFolder() && pChild->getScript().isEmpty()) {
+            pItem->setData(0, Qt::UserRole, isTopFolder);
+        }
         scriptMap.insert(pItem, pChild);
         top->addChild(pItem);
         recurseScripts(pChild, pItem);
@@ -1225,7 +1254,7 @@ void dlgPackageExporter::recurseKeys(TKey* item, QTreeWidgetItem* qItem)
         QStringList sl;
         sl << pChild->getName();
         auto pItem = new QTreeWidgetItem(sl);
-        pItem->setFlags(Qt::ItemIsUserCheckable | Qt::ItemIsAutoTristate | Qt::ItemIsEnabled | Qt::ItemIsSelectable);
+        pItem->setFlags(Qt::ItemIsUserCheckable  | Qt::ItemIsEnabled | Qt::ItemIsSelectable);
         pItem->setCheckState(0, Qt::Unchecked);
         keyMap.insert(pItem, pChild);
         qItem->addChild(pItem);
@@ -1247,8 +1276,11 @@ void dlgPackageExporter::listKeys()
         QStringList sl;
         sl << pChild->getName();
         auto pItem = new QTreeWidgetItem(sl);
-        pItem->setFlags(Qt::ItemIsUserCheckable | Qt::ItemIsAutoTristate | Qt::ItemIsEnabled | Qt::ItemIsSelectable);
+        pItem->setFlags(Qt::ItemIsUserCheckable  | Qt::ItemIsEnabled | Qt::ItemIsSelectable);
         pItem->setCheckState(0, Qt::Unchecked);
+        if (pChild->isFolder() && pChild->getScript().isEmpty()) {
+            pItem->setData(0, Qt::UserRole, isTopFolder);
+        }
         keyMap.insert(pItem, pChild);
         top->addChild(pItem);
         recurseKeys(pChild, pItem);
@@ -1267,7 +1299,7 @@ void dlgPackageExporter::recurseActions(TAction* item, QTreeWidgetItem* qItem)
         QStringList sl;
         sl << pChild->getName();
         auto pItem = new QTreeWidgetItem(sl);
-        pItem->setFlags(Qt::ItemIsUserCheckable | Qt::ItemIsAutoTristate | Qt::ItemIsEnabled | Qt::ItemIsSelectable);
+        pItem->setFlags(Qt::ItemIsUserCheckable  | Qt::ItemIsEnabled | Qt::ItemIsSelectable);
         pItem->setCheckState(0, Qt::Unchecked);
         actionMap.insert(pItem, pChild);
         qItem->addChild(pItem);
@@ -1286,8 +1318,11 @@ void dlgPackageExporter::listActions()
         QStringList sl;
         sl << pChild->getName();
         auto pItem = new QTreeWidgetItem(sl);
-        pItem->setFlags(Qt::ItemIsUserCheckable | Qt::ItemIsAutoTristate | Qt::ItemIsEnabled | Qt::ItemIsSelectable);
+        pItem->setFlags(Qt::ItemIsUserCheckable  | Qt::ItemIsEnabled | Qt::ItemIsSelectable);
         pItem->setCheckState(0, Qt::Unchecked);
+        if (pChild->isFolder() && pChild->getScript().isEmpty()) {
+            pItem->setData(0, Qt::UserRole, isTopFolder);
+        }
         actionMap.insert(pItem, pChild);
         top->addChild(pItem);
         recurseActions(pChild, pItem);
@@ -1309,7 +1344,7 @@ void dlgPackageExporter::recurseTimers(TTimer* item, QTreeWidgetItem* qItem)
         QStringList sl;
         sl << pChild->getName();
         auto pItem = new QTreeWidgetItem(sl);
-        pItem->setFlags(Qt::ItemIsUserCheckable | Qt::ItemIsAutoTristate | Qt::ItemIsEnabled | Qt::ItemIsSelectable);
+        pItem->setFlags(Qt::ItemIsUserCheckable  | Qt::ItemIsEnabled | Qt::ItemIsSelectable);
         pItem->setCheckState(0, Qt::Unchecked);
         timerMap.insert(pItem, pChild);
         qItem->addChild(pItem);
@@ -1331,8 +1366,11 @@ void dlgPackageExporter::listTimers()
         QStringList sl;
         sl << pChild->getName();
         auto pItem = new QTreeWidgetItem(sl);
-        pItem->setFlags(Qt::ItemIsUserCheckable | Qt::ItemIsAutoTristate | Qt::ItemIsEnabled | Qt::ItemIsSelectable);
+        pItem->setFlags(Qt::ItemIsUserCheckable  | Qt::ItemIsEnabled | Qt::ItemIsSelectable);
         pItem->setCheckState(0, Qt::Unchecked);
+        if (pChild->isFolder() && pChild->getScript().isEmpty()) {
+            pItem->setData(0, Qt::UserRole, isTopFolder);
+        }
         timerMap.insert(pItem, pChild);
         top->addChild(pItem);
         recurseTimers(pChild, pItem);
@@ -1361,10 +1399,11 @@ void dlgPackageExporter::displayResultMessage(const QString& html, bool const is
     ui->infoLabel->setOpenExternalLinks(true);
 }
 
-void dlgPackageExporter::slot_recountItems()
+void dlgPackageExporter::slot_recountItems(QTreeWidgetItem *item)
 {
-    static bool debounce;
 
+    checkChildren(item);
+    static bool debounce;
     if (!debounce) {
         debounce = true;
         QTimer::singleShot(0, this, [this]() {
@@ -1377,6 +1416,23 @@ void dlgPackageExporter::slot_recountItems()
             debounce = false;
         });
     }
+}
+
+// allow the top-folder to be force-selected for the package with right-click
+// normally undesired as it'll add unnecessary nesting
+void dlgPackageExporter::slot_rightClickOnItems(const QPoint& point)
+{
+    auto item = mpExportSelection->itemAt(point);
+    if (!item || item->parent() == nullptr) {
+        return;
+    }
+    mCheckChildren = false;
+    if (item->checkState(0) == Qt::Checked) {
+        item->setCheckState(0, Qt::Unchecked);
+    } else {
+        item->setCheckState(0, Qt::Checked);
+    }
+    mCheckChildren = true;
 }
 
 QString dlgPackageExporter::getActualPath() const
