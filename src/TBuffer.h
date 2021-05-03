@@ -190,7 +190,8 @@ public:
     // is apparently incompatible with using a default constructor - sigh!
     void encodingChanged(const QByteArray &);
     static int lengthInGraphemes(const QString& text);
-    QString encodeRawBytesToHidden(const unsigned char&) const;
+    static QString encodeRawByteToHidden(const unsigned char&);
+    static QString decodeHiddenRawBytes(const QString&);
 
     /*
      * These are not characters! They are from a range of Unicode Codepoints
@@ -198,22 +199,22 @@ public:
      * embed the hexadecimal values of raw bytes for incoming data that we
      * cannot decode in the current encoding.
      */
-    inline static const QChar rawNibble_0{QChar(0xFDD0)};
-    inline static const QChar rawNibble_1{QChar(0xFDD1)};
-    inline static const QChar rawNibble_2{QChar(0xFDD2)};
-    inline static const QChar rawNibble_3{QChar(0xFDD3)};
-    inline static const QChar rawNibble_4{QChar(0xFDD4)};
-    inline static const QChar rawNibble_5{QChar(0xFDD5)};
-    inline static const QChar rawNibble_6{QChar(0xFDD6)};
-    inline static const QChar rawNibble_7{QChar(0xFDD7)};
-    inline static const QChar rawNibble_8{QChar(0xFDD8)};
-    inline static const QChar rawNibble_9{QChar(0xFDD9)};
-    inline static const QChar rawNibble_A{QChar(0xFDDA)};
-    inline static const QChar rawNibble_B{QChar(0xFDDB)};
-    inline static const QChar rawNibble_C{QChar(0xFDDC)};
-    inline static const QChar rawNibble_D{QChar(0xFDDD)};
-    inline static const QChar rawNibble_E{QChar(0xFDDE)};
-    inline static const QChar rawNibble_F{QChar(0xFDDF)};
+    inline static const quint16 rawNibble_0 = 0xFDD0;
+    inline static const quint16 rawNibble_1 = 0xFDD1;
+    inline static const quint16 rawNibble_2 = 0xFDD2;
+    inline static const quint16 rawNibble_3 = 0xFDD3;
+    inline static const quint16 rawNibble_4 = 0xFDD4;
+    inline static const quint16 rawNibble_5 = 0xFDD5;
+    inline static const quint16 rawNibble_6 = 0xFDD6;
+    inline static const quint16 rawNibble_7 = 0xFDD7;
+    inline static const quint16 rawNibble_8 = 0xFDD8;
+    inline static const quint16 rawNibble_9 = 0xFDD9;
+    inline static const quint16 rawNibble_A = 0xFDDA;
+    inline static const quint16 rawNibble_B = 0xFDDB;
+    inline static const quint16 rawNibble_C = 0xFDDC;
+    inline static const quint16 rawNibble_D = 0xFDDD;
+    inline static const quint16 rawNibble_E = 0xFDDE;
+    inline static const quint16 rawNibble_F = 0xFDDF;
 
     std::deque<TChar> bufferLine;
     std::deque<std::deque<TChar>> buffer;

@@ -207,7 +207,17 @@ public:
     bool mSendEncodingWarningIssued = false;
     // If this is set then the above flag is ignored for the rest of the session
     bool mSendEncodingWarningsIgnored = false;
-
+    // Used to prevent more than one warning being shown in the event of a bad
+    // encoding (when the server sends characters that cannot be decoded in
+    // the current Server Encoding) - gets reset when the encoding is changed:
+    bool mReceiveEncodingWarningIssued = false;
+    // If this is set then the above flag is ignored for the rest of the session
+    bool mReceiveEncodingWarningsIgnored = false;
+    // If this is set then the raw data bytes as comma separated, '{'...'}'
+    // delimited pairs of hex digits will be shown after the Replacement
+    // Character so that someone who understands what is going on can see why
+    // the decoder barfed over the data:
+    bool mShowUndecodeableBytes = true;
 
 public slots:
     void setDownloadProgress(qint64, qint64);

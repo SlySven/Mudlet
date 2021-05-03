@@ -790,7 +790,7 @@ COMMIT_LINE:
                     // If the replacement character is used it means the byte is
                     // not encoded - so embed the raw byte (as a pair of
                     // non-characters) after it:
-                    mMudLine.append(encodeRawBytesToHidden(index));
+                    mMudLine.append(encodeRawByteToHidden(index));
                     extraTCharsNeeded = 2;
                 }
             }
@@ -3542,7 +3542,7 @@ bool TBuffer::processUtf8Sequence(const std::string& bufferData, const bool isFr
                 QString rawBytes;
                 mMudLine.append(QChar::ReplacementCharacter);
                 for (const auto rawByte : bufferData.substr(pos, utf8SequenceLength)) {
-                    rawBytes.append(encodeRawBytesToHidden(rawByte));
+                    rawBytes.append(encodeRawByteToHidden(rawByte));
                 }
                 mMudLine.append(rawBytes);
                 // The replacement character is a single QChar and it takes the
@@ -3999,7 +3999,7 @@ bool TBuffer::processGBSequence(const std::string& bufferData, const bool isFrom
             QString rawBytes;
             mMudLine.append(QChar::ReplacementCharacter);
             for (const auto rawByte : bufferData.substr(pos, gbSequenceLength)) {
-                rawBytes.append(encodeRawBytesToHidden(rawByte));
+                rawBytes.append(encodeRawByteToHidden(rawByte));
             }
             mMudLine.append(rawBytes);
             // The replacement character is a single QChar and it takes the
@@ -4139,7 +4139,7 @@ bool TBuffer::processBig5Sequence(const std::string& bufferData, const bool isFr
             QString rawBytes;
             mMudLine.append(QChar::ReplacementCharacter);
             for (const auto rawByte : bufferData.substr(pos, big5SequenceLength)) {
-                rawBytes.append(encodeRawBytesToHidden(rawByte));
+                rawBytes.append(encodeRawByteToHidden(rawByte));
             }
             mMudLine.append(rawBytes);
             // The replacement character is a single QChar and it takes the
@@ -4199,48 +4199,103 @@ const QList<QByteArray> TBuffer::getEncodingNames()
      return csmEncodingTable.getEncodingNames();
 }
 
-QString TBuffer::encodeRawBytesToHidden(const unsigned char& byte) const
+/* static */ QString TBuffer::encodeRawByteToHidden(const unsigned char& byte)
 {
     QChar highNibble;
     // clang-format off
     switch ((byte & 0xf0) >> 4) {
-    case 0:     highNibble = rawNibble_0;   break;
-    case 1:     highNibble = rawNibble_1;   break;
-    case 2:     highNibble = rawNibble_2;   break;
-    case 3:     highNibble = rawNibble_3;   break;
-    case 4:     highNibble = rawNibble_4;   break;
-    case 5:     highNibble = rawNibble_5;   break;
-    case 6:     highNibble = rawNibble_6;   break;
-    case 7:     highNibble = rawNibble_7;   break;
-    case 8:     highNibble = rawNibble_8;   break;
-    case 9:     highNibble = rawNibble_9;   break;
-    case 10:    highNibble = rawNibble_A;   break;
-    case 11:    highNibble = rawNibble_B;   break;
-    case 12:    highNibble = rawNibble_C;   break;
-    case 13:    highNibble = rawNibble_D;   break;
-    case 14:    highNibble = rawNibble_E;   break;
-    case 15:    highNibble = rawNibble_F;   break;
+    case 0:     highNibble = QChar(rawNibble_0);    break;
+    case 1:     highNibble = QChar(rawNibble_1);    break;
+    case 2:     highNibble = QChar(rawNibble_2);    break;
+    case 3:     highNibble = QChar(rawNibble_3);    break;
+    case 4:     highNibble = QChar(rawNibble_4);    break;
+    case 5:     highNibble = QChar(rawNibble_5);    break;
+    case 6:     highNibble = QChar(rawNibble_6);    break;
+    case 7:     highNibble = QChar(rawNibble_7);    break;
+    case 8:     highNibble = QChar(rawNibble_8);    break;
+    case 9:     highNibble = QChar(rawNibble_9);    break;
+    case 10:    highNibble = QChar(rawNibble_A);    break;
+    case 11:    highNibble = QChar(rawNibble_B);    break;
+    case 12:    highNibble = QChar(rawNibble_C);    break;
+    case 13:    highNibble = QChar(rawNibble_D);    break;
+    case 14:    highNibble = QChar(rawNibble_E);    break;
+    case 15:    highNibble = QChar(rawNibble_F);    break;
     }
 
     QChar lowNibble;
-    switch ((byte & 0xf0) >> 4) {
-    case 0:     lowNibble = rawNibble_0;    break;
-    case 1:     lowNibble = rawNibble_1;    break;
-    case 2:     lowNibble = rawNibble_2;    break;
-    case 3:     lowNibble = rawNibble_3;    break;
-    case 4:     lowNibble = rawNibble_4;    break;
-    case 5:     lowNibble = rawNibble_5;    break;
-    case 6:     lowNibble = rawNibble_6;    break;
-    case 7:     lowNibble = rawNibble_7;    break;
-    case 8:     lowNibble = rawNibble_8;    break;
-    case 9:     lowNibble = rawNibble_9;    break;
-    case 10:    lowNibble = rawNibble_A;    break;
-    case 11:    lowNibble = rawNibble_B;    break;
-    case 12:    lowNibble = rawNibble_C;    break;
-    case 13:    lowNibble = rawNibble_D;    break;
-    case 14:    lowNibble = rawNibble_E;    break;
-    case 15:    lowNibble = rawNibble_F;    break;
+    switch (byte & 0x0f) {
+    case 0:     lowNibble = QChar(rawNibble_0); break;
+    case 1:     lowNibble = QChar(rawNibble_1); break;
+    case 2:     lowNibble = QChar(rawNibble_2); break;
+    case 3:     lowNibble = QChar(rawNibble_3); break;
+    case 4:     lowNibble = QChar(rawNibble_4); break;
+    case 5:     lowNibble = QChar(rawNibble_5); break;
+    case 6:     lowNibble = QChar(rawNibble_6); break;
+    case 7:     lowNibble = QChar(rawNibble_7); break;
+    case 8:     lowNibble = QChar(rawNibble_8); break;
+    case 9:     lowNibble = QChar(rawNibble_9); break;
+    case 10:    lowNibble = QChar(rawNibble_A); break;
+    case 11:    lowNibble = QChar(rawNibble_B); break;
+    case 12:    lowNibble = QChar(rawNibble_C); break;
+    case 13:    lowNibble = QChar(rawNibble_D); break;
+    case 14:    lowNibble = QChar(rawNibble_E); break;
+    case 15:    lowNibble = QChar(rawNibble_F); break;
     }
     // clang-format on
     return highNibble % lowNibble;
+}
+
+/* static */ QString TBuffer::decodeHiddenRawBytes(const QString& rawText)
+{
+    Q_ASSERT_X(rawText.length() == 2, "TBuffer::decodeHiddenRawByteToHex(const QString&)", "Supplied QString is NOT the expected pair of QChars!");
+    QChar highNibbleDigit;
+    // clang-format off
+    switch (rawText.at(0).unicode()) {
+    case rawNibble_0:   highNibbleDigit = QLatin1Char('0'); break;
+    case rawNibble_1:   highNibbleDigit = QLatin1Char('1'); break;
+    case rawNibble_2:   highNibbleDigit = QLatin1Char('2'); break;
+    case rawNibble_3:   highNibbleDigit = QLatin1Char('3'); break;
+    case rawNibble_4:   highNibbleDigit = QLatin1Char('4'); break;
+    case rawNibble_5:   highNibbleDigit = QLatin1Char('5'); break;
+    case rawNibble_6:   highNibbleDigit = QLatin1Char('6'); break;
+    case rawNibble_7:   highNibbleDigit = QLatin1Char('7'); break;
+    case rawNibble_8:   highNibbleDigit = QLatin1Char('8'); break;
+    case rawNibble_9:   highNibbleDigit = QLatin1Char('9'); break;
+    case rawNibble_A:   highNibbleDigit = QLatin1Char('A'); break;
+    case rawNibble_B:   highNibbleDigit = QLatin1Char('B'); break;
+    case rawNibble_C:   highNibbleDigit = QLatin1Char('C'); break;
+    case rawNibble_D:   highNibbleDigit = QLatin1Char('D'); break;
+    case rawNibble_E:   highNibbleDigit = QLatin1Char('E'); break;
+    case rawNibble_F:   highNibbleDigit = QLatin1Char('F'); break;
+    default:
+         // Handle mistakes where the first QChar is not one of the
+         // non-characters we are expecting:
+         highNibbleDigit = rawText.at(0);
+    }
+
+    QChar lowNibbleDigit;
+    switch (rawText.at(1).unicode()) {
+    case rawNibble_0:   lowNibbleDigit = QLatin1Char('0');  break;
+    case rawNibble_1:   lowNibbleDigit = QLatin1Char('1');  break;
+    case rawNibble_2:   lowNibbleDigit = QLatin1Char('2');  break;
+    case rawNibble_3:   lowNibbleDigit = QLatin1Char('3');  break;
+    case rawNibble_4:   lowNibbleDigit = QLatin1Char('4');  break;
+    case rawNibble_5:   lowNibbleDigit = QLatin1Char('5');  break;
+    case rawNibble_6:   lowNibbleDigit = QLatin1Char('6');  break;
+    case rawNibble_7:   lowNibbleDigit = QLatin1Char('7');  break;
+    case rawNibble_8:   lowNibbleDigit = QLatin1Char('8');  break;
+    case rawNibble_9:   lowNibbleDigit = QLatin1Char('9');  break;
+    case rawNibble_A:   lowNibbleDigit = QLatin1Char('A');  break;
+    case rawNibble_B:   lowNibbleDigit = QLatin1Char('B');  break;
+    case rawNibble_C:   lowNibbleDigit = QLatin1Char('C');  break;
+    case rawNibble_D:   lowNibbleDigit = QLatin1Char('D');  break;
+    case rawNibble_E:   lowNibbleDigit = QLatin1Char('E');  break;
+    case rawNibble_F:   lowNibbleDigit = QLatin1Char('F');  break;
+    default:
+         // Handle mistakes where the second QChar is not one of the
+         // non-characters we are expecting:
+         lowNibbleDigit = rawText.at(1);
+    }
+    // clang-format on
+    return highNibbleDigit % lowNibbleDigit;
 }

@@ -430,6 +430,11 @@ inline uint TTextEdit::getGraphemeBaseCharacter(const QString& str) const
 
 void TTextEdit::drawLine(QPainter& painter, int lineNumber, int lineOfScreen, int* offset) const
 {
+    // This contains the top-left coordinate (in terms of "normal" spaces {X}
+    // and lines {Y}) of the space to use to draw each grapheme in the line of
+    // text - so for graphemes that are not printable there will be no increment
+    // in the X value compared to a preceeding (printable) one and the
+    // associated width will be zero:
     QPoint cursor(-mCursorX, lineOfScreen);
     QString lineText = mpBuffer->lineBuffer.at(lineNumber);
     QTextBoundaryFinder boundaryFinder(QTextBoundaryFinder::Grapheme, lineText);
@@ -441,11 +446,11 @@ void TTextEdit::drawLine(QPainter& painter, int lineNumber, int lineOfScreen, in
         QVector<QRect> textRects;
         QVector<int> charWidths;
         QVector<QString> graphemes;
-        for (const QChar c : timestamp) {
+        for (int i = 0, total = timestamp.length(); i < total;  ++i) {
             // The column argument is not incremented here (is fixed at 0) so
             // the timestamp does not take up any places when it is clicked on
             // by the mouse...
-            cursor.setX(cursor.x() + drawGraphemeBackground(painter, fgColors, textRects, graphemes, charWidths, cursor, c, 0, timeStampStyle));
+            cursor.setX(cursor.x() + drawGraphemeBackground(painter, i, fgColors, textRects, graphemes, charWidths, cursor, timestamp, 1, 0, timeStampStyle));
         }
         int index = -1;
         for (const QChar c : timestamp) {
@@ -465,33 +470,60 @@ void TTextEdit::drawLine(QPainter& painter, int lineNumber, int lineOfScreen, in
     QVector<QRect> textRects;
     QVector<int> charWidths;
     QVector<QString> graphemes;
+    QVector<TChar> charStyles;
     for (int indexOfChar = 0, total = lineText.size(); indexOfChar < total;) {
         int nextBoundary = boundaryFinder.toNextBoundary();
 
         TChar& charStyle = mpBuffer->buffer.at(lineNumber).at(indexOfChar);
-        int graphemeWidth = drawGraphemeBackground(painter, fgColors, textRects, graphemes, charWidths, cursor, lineText.mid(indexOfChar, nextBoundary - indexOfChar), columnWithOutTimestamp, charStyle);
+        charStyles << charStyle;
+        int indexOfCharBeforeCall = indexOfChar;
+        int graphemeWidth = drawGraphemeBackground(painter, indexOfChar, fgColors, textRects, graphemes, charWidths, cursor, lineText, (nextBoundary - indexOfChar), columnWithOutTimestamp, charStyle);
         cursor.setX(cursor.x() + graphemeWidth);
-        indexOfChar = nextBoundary;
         columnWithOutTimestamp += graphemeWidth;
+        if (Q_LIKELY(indexOfCharBeforeCall == indexOfChar)) {
+            indexOfChar = nextBoundary;
+        } else {
+            // indexOfChar has been incremented by the call to
+            // drawGraphemeBackground(...) to skip over some (non-printable)
+            // code-points - but we need to move the grapheme finder so that it
+            // correctly moves to the same position in the next interation:
+            static int fudge = 0;
+            if (indexOfChar >= lineText.size()) {
+                boundaryFinder.toEnd();
+            } else {
+                boundaryFinder.setPosition(indexOfChar + fudge);
+            }
+        }
     }
     boundaryFinder.toStart();
-    int index = -1;
-    for (int indexOfChar = 0, total = lineText.size(); indexOfChar < total;) {
-        int nextBoundary = boundaryFinder.toNextBoundary();
-
-        TChar& charStyle = mpBuffer->buffer.at(lineNumber).at(indexOfChar);
-        ++index;
+    for (int index = 0, total = graphemes.size(); index < total; ++index) {
+        TChar charStyle = charStyles.at(index);
         drawGraphemeForeground(painter, fgColors.at(index), textRects.at(index), graphemes.at(index), charStyle);
-        indexOfChar = nextBoundary;
     }
 }
 
-int TTextEdit::drawGraphemeBackground(QPainter& painter, QVector<QColor>& fgColors, QVector<QRect>& textRects, QVector<QString>& graphemes, QVector<int>& charWidths, QPoint& cursor, const QString& grapheme, const int column, TChar& charStyle) const
+// Examines the current grapheme (as identified by the caller) and determines
+// how many "spaces" are needed to show it; it also forces replacement of most
+// control characters (which are otherwise unprintable) with a visible
+// representation. It then paints the background in the appropriate colour
+// allowing for the modifications that selection and/or reverse video requires.
+// As the display of a line of text is a two stage process of doing the
+// background for ALL the characters in the line and only THEN printing the
+// foregrounds of those character some details needed for BOTH stages are cached
+// in the supplied non-const references so that the drawGraphemesForeground(...)
+// method can subsequently use them.
+// In some situations "start" will be modified
+int TTextEdit::drawGraphemeBackground(QPainter& painter, int& start, QVector<QColor>& fgColors, QVector<QRect>& textRects, QVector<QString>& graphemes, QVector<int>& charWidths, QPoint& cursor, const QString& lineBuffer, const int length, const int column, const TChar& charStyle) const
 {
     static const QString replacementCharacter{QChar::ReplacementCharacter};
-    uint unicode = getGraphemeBaseCharacter(grapheme);
+    // We use a static one so that we can optimize it once and forever:
+    static QRegularExpression hiddenHexCodeRegEx{};
+    if (hiddenHexCodeRegEx.pattern().isEmpty()) {
+        hiddenHexCodeRegEx.setPattern(QStringLiteral("\\x{fffd}([\\x{fdd0}-\\x{fddf}]+)"));
+        hiddenHexCodeRegEx.optimize();
+    }
+    uint unicode = getGraphemeBaseCharacter(lineBuffer.mid(start, length));
     int charWidth;
-    bool useReplacementCharacter = false;
     switch (unicode) {
     case 0:     graphemes.append(QChar(0x2400)); charWidth = 1; break; // NUL - not sure that this can appear
     case 1:     graphemes.append(QChar(0x2401)); charWidth = 1; break; // SOH
@@ -529,15 +561,53 @@ int TTextEdit::drawGraphemeBackground(QPainter& painter, QVector<QColor>& fgColo
     case 30:    graphemes.append(QChar(0x241E)); charWidth = 1; break; // RS
     case 31:    graphemes.append(QChar(0x241F)); charWidth = 1; break; // US
     case 127:   graphemes.append(QChar(0x2421)); charWidth = 1; break; // DEL
-    default:
-        charWidth = getGraphemeWidth(unicode);
-        if (!charWidth) {
-            // Print the grapheme replacement character instead - which seems to
-            // be 1 wide
-            useReplacementCharacter = true;
+    case 0xfffd: {
+        // An existing replacement character - check to see if it is followed by
+        // a hidden hex digit representation of some undecodable bytes:
+        QRegularExpressionMatch match = hiddenHexCodeRegEx.match(lineBuffer.mid(start));
+        if (match.hasMatch()) {
+            QString encodedRawHexDigits{match.captured(1)};
+            if (mpHost && mpHost->mTelnet.mShowUndecodeableBytes) {
+                Q_ASSERT_X(encodedRawHexDigits.length() % 2 == 0, "TTextEdit::drawGraphemeBackground(...)", "Odd number of digits in hiddden bytes - this should not happen!");
+                QStringList byteDigitPairs;
+                for (int i = 0, total = encodedRawHexDigits.length() / 2; i < total; ++i) {
+                    byteDigitPairs << TBuffer::decodeHiddenRawBytes(encodedRawHexDigits.mid(2 * i, 2));
+                }
+                graphemes.append(QStringLiteral("%1{%2}").arg(replacementCharacter, byteDigitPairs.join(QLatin1Char(','))));
+                // We will need x normal width spaces where x is made from:
+                // 3 for the replacement character and the braces
+                // + 2 for each pair hex digits
+                // + 1 for each pair hex digits for the comma between each pair of them when there is more than one
+                charWidth = 3 + (2 * byteDigitPairs.count()) + ((byteDigitPairs.count() > 1) ? byteDigitPairs.count() - 1 : 0);
+            } else {
+                // just show a single replacement character
+                graphemes.append(replacementCharacter);
+                charWidth = 1;
+            }
+            // Whether we show the information they contain or not, we need to
+            // advance over the non-characters that encode the hex digits of the
+            // undecode-able bytes:
+            start += encodedRawHexDigits.length();
+        } else {
+            // just treat as it is - a single replacement character
+            graphemes.append(replacementCharacter);
             charWidth = 1;
         }
-        graphemes.append(useReplacementCharacter ? replacementCharacter : grapheme);
+        break;
+    } // End of case 0xfffd
+    default:
+        // Will return 0 for something that cannot be printed:
+        charWidth = getGraphemeWidth(unicode);
+        if (charWidth) {
+            // We have not passed through code that will have altered "start" if we
+            // get to here so it is still safe/valid to use it to pick
+            graphemes.append(lineBuffer.mid(start, length));
+        } else {
+            // Print the grapheme replacement character instead:
+//            graphemes.append(replacementCharacter);
+            // which seems to be 1 wide so set the space to use from 0 to that:
+//            charWidth = 1;
+        }
     }
     charWidths.append(charWidth);
 
@@ -585,8 +655,18 @@ void TTextEdit::drawGraphemeForeground(QPainter& painter, const QColor& fgColor,
     painter.drawText(textRect.x(), textRect.bottom() - mFontDescent, grapheme);
 }
 
+// Returns 0, 1 or 2 to indicate how many "normal width" spaces the grapheme
+// should need - 0 indicates that it is not a printable one for some reason.
+// Note that this method should not be fed the code for horizontal tabs, those
+// have to be handled by the calling function/method as the requirement for
+// them is dependent on what preceeds them on the line.
 int TTextEdit::getGraphemeWidth(uint unicode) const
 {
+    // Intercept non-characters until our copy of widechar_wcwidth(...) is
+    // updated to handle them:
+    if (Q_UNLIKELY((unicode >= 0xFDD0 && unicode <= 0xFDEF) || (unicode % 0x10000 == 0xFFFE) || (unicode % 0x10000 == 0xFFFF))) {
+        return 0;
+    }
     // Markus Kuhn's mk_wcwidth()/mk_wcwidth_cjk():
     // https://www.cl.cam.ac.uk/~mgk25/ucs/wcwidth.c have not been updated since
     // Unicode 5 and we have replaced them by wide_wcwidth:
@@ -675,6 +755,9 @@ int TTextEdit::getGraphemeWidth(uint unicode) const
         } else {
             return 2;
         }
+// Added in a recent update to widechar_wcwidth but not yet in the version in Mudlet
+//    case widechar_nonchar_table:
+//        return 0;
     default:
         return 1; // Got an uncoded return value from widechar_wcwidth(...)
     }
