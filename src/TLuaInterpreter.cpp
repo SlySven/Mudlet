@@ -27,6 +27,7 @@
 #include "TLuaInterpreter.h"
 
 
+#include "EAction.h"
 #include "Host.h"
 #include "TAlias.h"
 #include "TArea.h"
@@ -34,6 +35,7 @@
 #include "TConsole.h"
 #include "TDebug.h"
 #include "TEvent.h"
+#include "TFlipButton.h"
 #include "TForkedProcess.h"
 #include "TMapLabel.h"
 #include "TRoomDB.h"
@@ -1298,40 +1300,60 @@ int TLuaInterpreter::spawn(lua_State* L)
 }
 
 // Documentation: https://wiki.mudlet.org/w/Manual:Lua_Functions#selectCaptureGroup
-int TLuaInterpreter::selectCaptureGroup(lua_State* L)
+int TLuaInterpreter::selectCaptureGroup(lua_State *L)
 {
-    int captureGroup = getVerifiedInt(L, __func__, 1, "capture group");
-    Host& host = getHostFromLua(L);
-    if (captureGroup < 1) {
-        lua_pushnumber(L, -1);
-        return 1;
+    if (!(lua_isnumber(L, 1) || lua_isstring(L, 1))) {
+        lua_pushfstring(L,
+                        "selectCaptureGroup: bad argument #1 type (capture group as number or capture group name as string expected, got %s!)",
+                        luaL_typename(L, 1));
+        return lua_error(L);
     }
-    // We want capture groups to start with 1 instead of 0 so predecrement
-    // luaNumOfMatch :
-    if (--captureGroup < static_cast<int>(host.getLuaInterpreter()->mCaptureGroupList.size())) {
-        TLuaInterpreter* pL = host.getLuaInterpreter();
-        auto iti = pL->mCaptureGroupPosList.begin();
-        auto its = pL->mCaptureGroupList.begin();
-        int begin = *iti;
-        std::string& s = *its;
 
-        for (int i = 0; iti != pL->mCaptureGroupPosList.end(); ++iti, ++i) {
+    Host &host = getHostFromLua(L);
+    TLuaInterpreter *pL = host.getLuaInterpreter();
+    int begin = 0;
+    int length = 0;
+
+    if (lua_isnumber(L, 1)) {
+        auto captureGroup = lua_tonumber(L, 1);
+        if (captureGroup < 1) {
+            lua_pushnumber(L, -1);
+            return 1;
+        }
+        // We want capture groups to start with 1 instead of 0 so predecrement
+        // luaNumOfMatch :
+        if (--captureGroup < static_cast<int>(host.getLuaInterpreter()->mCaptureGroupList.size())) {
+            auto iti = pL->mCaptureGroupPosList.begin();
+            auto its = pL->mCaptureGroupList.begin();
             begin = *iti;
-            if (i >= captureGroup) {
-                break;
-            }
-        }
-        for (int i = 0; its != pL->mCaptureGroupList.end(); ++its, ++i) {
-            s = *its;
-            if (i >= captureGroup) {
-                break;
-            }
-        }
+            std::string &s = *its;
 
-        int length = QString::fromStdString(s).size();
-        if (mudlet::debugMode) {
-            TDebug(Qt::white, Qt::red) << "selectCaptureGroup(" << begin << ", " << length << ")\n" >> &host;
+            for (int i = 0; iti != pL->mCaptureGroupPosList.end(); ++iti, ++i) {
+                begin = *iti;
+                if (i >= captureGroup) {
+                    break;
+                }
+            }
+            for (int i = 0; its != pL->mCaptureGroupList.end(); ++its, ++i) {
+                s = *its;
+                if (i >= captureGroup) {
+                    break;
+                }
+            }
+
+            length = QString::fromStdString(s).size();
+            if (mudlet::debugMode) {
+                TDebug(Qt::white, Qt::red) << "selectCaptureGroup(" << begin << ", " << length << ")\n" >> &host;
+            }
         }
+    } else if (lua_isstring(L, 1)) {
+        auto name = lua_tostring(L, 1);
+        if (pL->mCapturedNameGroupsPosList.contains(name)) {
+            begin = pL->mCapturedNameGroupsPosList.value(name).first;
+            length = pL->mCapturedNameGroupsPosList.value(name).second;
+        }
+    }
+    if (length > 0) {
         int pos = host.mpConsole->selectSection(begin, length);
         lua_pushnumber(L, pos);
     } else {
@@ -3576,7 +3598,7 @@ int TLuaInterpreter::setBorderSizes(lua_State* L)
             sizeTop = getVerifiedInt(L, __func__, 1, "new top size");
             sizeRight = getVerifiedInt(L, __func__, 2, "new right size");
             sizeBottom = getVerifiedInt(L, __func__, 3, "new bottom size");
-            sizeBottom = getVerifiedInt(L, __func__, 4, "new left size");
+            sizeLeft = getVerifiedInt(L, __func__, 4, "new left size");
             break;
         }
     }
@@ -5010,7 +5032,7 @@ int TLuaInterpreter::getAreaRooms(lua_State* L)
     while (itAreaRoom.hasNext()) {
         lua_pushnumber(L, ++i);
         // We should have started at 1 but past code had incorrectly started
-        // with a zero index and we must maintain compatibilty with code written
+        // with a zero index and we must maintain compatibility with code written
         // for that
         lua_pushnumber(L, itAreaRoom.next());
         lua_settable(L, -3);
@@ -5052,7 +5074,7 @@ int TLuaInterpreter::getAreaExits(lua_State* L)
 
     lua_newtable(L);
     if (n < 2 || (n > 1 && !isFullDataRequired)) {
-        // Replicate original implimentation
+        // Replicate original implementation
         QList<int> areaExits = pA->getAreaExitRoomIds();
         if (areaExits.size() > 1) {
             std::sort(areaExits.begin(), areaExits.end());
@@ -5121,7 +5143,7 @@ int TLuaInterpreter::gotoRoom(lua_State* L)
     }
 
     if (!host.mpMap->gotoRoom(targetRoomId)) {
-        int totalWeight = host.assemblePath(); // Needed if unsucessful to clear lua speedwalk tables
+        int totalWeight = host.assemblePath(); // Needed if unsuccessful to clear lua speedwalk tables
         Q_UNUSED(totalWeight);
         return warnArgumentValue(L, __func__, QStringLiteral("no path found from current room to room with id %1").arg(targetRoomId), true);
     }
@@ -5146,7 +5168,7 @@ int TLuaInterpreter::getPath(lua_State* L)
     }
 
     bool ret = host.mpMap->gotoRoom(originRoomId, targetRoomId);
-    int totalWeight = host.assemblePath(); // Needed even if unsucessful, to clear lua tables then
+    int totalWeight = host.assemblePath(); // Needed even if unsuccessful, to clear lua tables then
     if (ret) {
         lua_pushboolean(L, true);
         lua_pushnumber(L, totalWeight);
@@ -5764,24 +5786,117 @@ int TLuaInterpreter::sendTelnetChannel102(lua_State* L)
     }
     // We have already validated output to contain a 2 byte payload so we
     // should not need to worry about the "encoding" in this use of
-    // socketOutRaw(...) - with the exception of handling any occurance of
+    // socketOutRaw(...) - with the exception of handling any occurrence of
     // 0xFF as either of the bytes to send - however Aardwolf does not use
     // *THAT* value so, though it is probably okay to not worry about the
     // need to "escape" it to get it through the telnet protocol unscathed
-    // it is trival to fix:
+    // it is trivial to fix:
     output = mudlet::replaceString(output, "\xff", "\xff\xff");
     host.mTelnet.socketOutRaw(output);
     lua_pushboolean(L, true);
     return 1;
 }
 
+// Internal helper function for two following functions:
+// returns 0 and a pointer to the TAction with the ID or
+//   the first one found with the name as the index item on success.
+// returns a non-zero number and a nullptr on failure (the first is the number
+//   of items on the stack for the caller to return to ITS caller).
+// does NOT return (normally) if the index item on the stack is not a number or
+//   a string
+std::pair<int, TAction*> TLuaInterpreter::getTActionFromIdOrName(lua_State* L, const int index, const char* func)
+{
+    auto& host = getHostFromLua(L);
+    auto argType = lua_type(L, index);
+    TAction* pItem = nullptr;
+    if (argType == LUA_TNUMBER) {
+        int id = qRound(lua_tonumber(L, index));
+        if (id < 0) {
+            return {warnArgumentValue(L, func, QStringLiteral("item ID (%1) invalid, it must be equal or greater than zero").arg(id).toUtf8().constData()), pItem};
+        }
+        pItem = host.getActionUnit()->getAction(id);
+        if (!pItem) {
+            return {warnArgumentValue(L, func, QStringLiteral("no button item with ID %1 found").arg(id).toUtf8().constData()), pItem};
+        }
+        if (!pItem->isPushDownButton()) {
+            pItem = nullptr;
+            return {warnArgumentValue(L, func, QStringLiteral("item ID with %1 is not a push-down button").arg(id).toUtf8().constData()), pItem};
+        }
+    }
+
+    if (argType == LUA_TSTRING) {
+        QString name = lua_tostring(L, index);
+        if (name.isEmpty()) {
+            return {warnArgumentValue(L, func, "item name must not be an empty string"), pItem};
+        }
+        pItem = host.getActionUnit()->findAction(name);
+        if (!pItem) {
+            return {warnArgumentValue(L, func, QStringLiteral("no button item with name '%1' found").arg(name).toUtf8().constData()), pItem};
+        }
+        if (!pItem->isPushDownButton()) {
+            pItem = nullptr;
+            return {warnArgumentValue(L, func, QStringLiteral("item with name '%1' is not a push-down button").arg(name).toUtf8().constData()), pItem};
+        }
+    }
+
+    if (!pItem) {
+        // we'll get here if the (index) argument is NOT usable:
+        lua_pushfstring(L, "%s: bad argument #%d type (ID as number or name as string expected, got %s!)",
+                        func, index, luaL_typename(L, index));
+        lua_error(L); // Does not return!
+        Q_UNREACHABLE();
+    }
+
+    return {0, pItem};
+}
+
 // Documentation: https://wiki.mudlet.org/w/Manual:Lua_Functions#getButtonState
 int TLuaInterpreter::getButtonState(lua_State* L)
 {
-    Host& host = getHostFromLua(L);
-    int state;
-    state = host.mpConsole->getButtonState();
-    lua_pushnumber(L, state);
+    auto& host = getHostFromLua(L);
+    if (!lua_gettop(L)) {
+        // The original function only works in the script for a push-down button
+        // and takes no arguments so provide the backwards compatible behaviour
+        // if that is the case:
+        lua_pushnumber(L, host.mpConsole->getButtonState());
+        return 1;
+    }
+
+    auto [retCount, pItem] = getTActionFromIdOrName(L, 1, __func__);
+    if (retCount) {
+        // pItem will be a nullptr if retCount is non-zero:
+        return retCount;
+    }
+
+    lua_pushboolean(L, pItem->mButtonState);
+    return 1;
+}
+
+// Documentation: https://wiki.mudlet.org/w/Manual:Lua_Functions#setButtonState
+int TLuaInterpreter::setButtonState(lua_State* L)
+{
+    auto [retCount, pItem] = getTActionFromIdOrName(L, 1, __func__);
+    if (retCount) {
+        // pItem will be a nullptr if retCount is non-zero:
+        return retCount;
+    }
+
+    auto checked = getVerifiedBool(L, __func__, 2, "checked");
+
+    if (pItem->mButtonState != checked) {
+        pItem->mButtonState = checked;
+        if (pItem->mpEButton) {
+            pItem->mpEButton->setChecked(checked);
+        }
+        if (pItem->mpFButton) {
+            pItem->mpFButton->setChecked(checked);
+        }
+        lua_pushboolean(L, true);
+        return 1;
+    }
+
+    // We only returned in the above (with a true value) if we changed the state:
+    lua_pushboolean(L, false);
     return 1;
 }
 
@@ -6179,7 +6294,7 @@ int TLuaInterpreter::tempAnsiColorTrigger(lua_State* L)
         int value = lua_tointeger(L, s);
         if (value == TTrigger::scmIgnored && lua_gettop(L) < 2) {
             return warnArgumentValue(L, __func__, QStringLiteral(
-                "invalid ANSI color number %1, it cannot be used (to ignore the foreground color) if the background color is ommitted")
+                "invalid ANSI color number %1, it cannot be used (to ignore the foreground color) if the background color is omitted")
                 .arg(value));
         }
         // At present we limit the range to (Trigger::scmIgnored),
@@ -7183,7 +7298,7 @@ int TLuaInterpreter::setAreaName(lua_State* L)
         }
         // Strangely, previous code allowed this command to create a NEW area's name
         // with this ID, but without a TArea instance to accompany it (the latter was/is
-        // instantiated as needed when a room is moved to the relevent area...) and we
+        // instantiated as needed when a room is moved to the relevant area...) and we
         // need to continue to allow this - Slysven
         //        else if (!host.mpMap->mpRoomDB->getAreaIDList().contains(id)) {
         //            return warnArgumentValue(L, __func__, QStringLiteral(
@@ -7552,6 +7667,9 @@ int TLuaInterpreter::createMapLabel(lua_State* L)
     float zoom = 30.0;
     bool showOnTop = true;
     bool noScaling = true;
+    QString fontName;
+    int foregroundTransparency = 255;
+    int backgroundTransparency = 50;
 
     int args = lua_gettop(L);
     int area = getVerifiedInt(L, __func__, 1, "areaID");
@@ -7575,9 +7693,18 @@ int TLuaInterpreter::createMapLabel(lua_State* L)
             }
         }
     }
+    if (args > 15) {
+        fontName = getVerifiedString(L, __func__, 16, "fontName", true);
+    }
+    if (args > 16) {
+        foregroundTransparency = getVerifiedInt(L, __func__, 17, "foregroundTransparency", true);
+    }
+    if (args > 17) {
+        backgroundTransparency = getVerifiedInt(L, __func__, 18, "backgroundTransparency", true);
+    }
 
     Host& host = getHostFromLua(L);
-    lua_pushinteger(L, host.mpMap->createMapLabel(area, text, posx, posy, posz, QColor(fgr, fgg, fgb), QColor(bgr, bgg, bgb), showOnTop, noScaling, zoom, fontSize));
+    lua_pushinteger(L, host.mpMap->createMapLabel(area, text, posx, posy, posz, QColor(fgr, fgg, fgb, foregroundTransparency), QColor(bgr, bgg, bgb, backgroundTransparency), showOnTop, noScaling, zoom, fontSize, fontName));
     return 1;
 }
 
@@ -7769,7 +7896,7 @@ int TLuaInterpreter::addCustomLine(lua_State* L)
         return lua_error(L);
     }
     if (lua_isnumber(L, 2)) {
-        id_to = lua_tointeger(L, 2);
+        id_to = static_cast<int>(lua_tointeger(L, 2));
         TRoom* pR_to = host.mpMap->mpRoomDB->getRoom(id_to);
         if (!pR_to) {
             return warnArgumentValue(L, __func__, QStringLiteral("target room id %1 does not exist").arg(id_to));
@@ -7835,7 +7962,7 @@ int TLuaInterpreter::addCustomLine(lua_State* L)
                         y.append(lua_tonumber(L, -1));
                         break;
                     case 3:
-                        z.append(lua_tonumber(L, -1));
+                        z.append(static_cast<int>(lua_tonumber(L, -1)));
                         break;
                     default:; // No-op
                     }
@@ -7843,6 +7970,16 @@ int TLuaInterpreter::addCustomLine(lua_State* L)
                 lua_pop(L, 1);
             }
             lua_pop(L, 1);
+        }
+        if (!i || !x.count()) {
+            // If there is only an empty sub-table inside the table then i is
+            // one but there is nothing in any of the QLists and things will
+            // still blow up as per Issue #5272 - so also check for at least one
+            // x-coordinate value:
+            return warnArgumentValue(L, __func__, "missing coordinates to create the line to");
+        }
+        if (x.count() != y.count() || x.count() != z.count()) {
+            return warnArgumentValue(L, __func__, "mismatch in numbers of coordinates for the points for the custom line given in table as second argument; each must contain three coordinates, i.e. x, y AND z numeric values as a sub-table");
         }
     }
 
@@ -7852,7 +7989,7 @@ int TLuaInterpreter::addCustomLine(lua_State* L)
         return lua_error(L);
     }
     if (!pR->hasExitOrSpecialExit(direction)) {
-        return warnArgumentValue(L, __func__, QStringLiteral("room id %1 does not have an exit that can be identified from '%2'")
+        return warnArgumentValue(L, __func__, QStringLiteral("room id %1 does not have an exit in a direction that can be identified from '%2'")
             .arg(QString::number(id_from), lua_tostring(L, 3)));
     }
 
@@ -7874,7 +8011,8 @@ int TLuaInterpreter::addCustomLine(lua_State* L)
     }
 
     if (!lua_istable(L, 5)) {
-        lua_pushfstring(L, "addCustomLine: bad argument #5 type (RGB color components as a table expected, got %s!)", luaL_typename(L, 4));
+        lua_pushfstring(L, "addCustomLine: bad argument #5 type (RGB color components as a table expected, got %s!)", luaL_typename(L, 5));
+        return lua_error(L);
     } else {
         lua_pushnil(L);
         int tind = 0;
@@ -7882,28 +8020,28 @@ int TLuaInterpreter::addCustomLine(lua_State* L)
             if (++tind <= 3) {
                 if (lua_type(L, -1) != LUA_TNUMBER) {
                     lua_pushfstring(L,
-                                    "addCustomLine: bad argument #4 table item #%d type (%s color component as a number between 0 and 255 expected, got %s!)",
+                                    "addCustomLine: bad argument #5 table item #%d type (%s color component as a number between 0 and 255 expected, got %s!)",
                                     tind,
                                     (tind == 1 ? "red" : (tind == 2 ? "green" : "blue")),
                                     luaL_typename(L, -1));
                     return lua_error(L);
                 }
 
-                qint64 component = lua_tonumber(L, -1);
+                qint64 component = lua_tointeger(L, -1);
                 if (component < 0 || component > 255) {
                     return warnArgumentValue(L, __func__, QStringLiteral(
-                        "%1 color component in the table of the fourth argument is %2 which is out of the valid range (0 to 255)")
+                        "%1 color component in the table of the fifth argument is %2 which is out of the valid range (0 to 255)")
                         .arg((tind == 1 ? "red" : (tind == 2 ? "green" : "blue")), QString::number(component)));
                 }
                 switch (tind) {
                 case 1:
-                    r = component;
+                    r = static_cast<int>(component);
                     break;
                 case 2:
-                    g = component;
+                    g = static_cast<int>(component);
                     break;
                 case 3:
-                    b = component;
+                    b = static_cast<int>(component);
                     break;
                 default:
                     Q_UNREACHABLE();
@@ -7994,7 +8132,7 @@ int TLuaInterpreter::getCustomLines(lua_State* L)
     int roomID = getVerifiedInt(L, __func__, 1, "room id");
     Host& host = getHostFromLua(L);
     TRoom* pR = host.mpMap->mpRoomDB->getRoom(roomID);
-    if (!pR) { //if the room doesnt exist return nil
+    if (!pR) { //if the room doesn't exist return nil
         return warnArgumentValue(L, __func__, QStringLiteral("room %1 doesn't exist").arg(roomID));
     }
     lua_newtable(L); //return table customLines[]
@@ -8309,8 +8447,8 @@ int TLuaInterpreter::clearRoomUserDataItem(lua_State* L)
     }
     // Turns out that an empty key IS possible, but if this changes this should be uncommented
     //        if (key.isEmpty()) {
-    //            // If the user accidently supplied an white-space only or empty key
-    //            // string we don't do anything, but we, sucessfully, fail to do it... 8-)
+    //            // If the user accidentally supplied an white-space only or empty key
+    //            // string we don't do anything, but we, successfully, fail to do it... 8-)
     //            lua_pushboolean( L, false );
     //        }
     /*      else */ if (pR->userData.contains(key)) {
@@ -8862,7 +9000,7 @@ int TLuaInterpreter::setRoomArea(lua_State* L)
     // appear in the TRoomDB::areaNamesMap...
     bool result = host.mpMap->setRoomArea(id, areaId, false);
     if (result) {
-        // As a sucessfull result WILL change the area a room is in then the map
+        // As a successful result WILL change the area a room is in then the map
         // should be updated.  The GUI code that modifies room(s) areas already
         // includes such a call to update the mapper.
         if (host.mpMap->mpMapper) {
@@ -8892,7 +9030,7 @@ int TLuaInterpreter::resetRoomArea(lua_State* L)
     }
     bool result = host.mpMap->setRoomArea(id, -1, false);
     if (result) {
-        // As a sucessfull result WILL change the area a room is in then the map
+        // As a successful result WILL change the area a room is in then the map
         // should be updated.  The GUI code that modifies room(s) areas already
         // includes such a call to update the mapper.
         if (host.mpMap->mpMapper) {
@@ -10241,6 +10379,20 @@ int TLuaInterpreter::appendCmdLine(lua_State* L)
     return 0;
 }
 
+
+// Documentation: https://wiki.mudlet.org/w/Manual:Lua_Functions#selectCmdLineText
+int TLuaInterpreter::selectCmdLineText(lua_State* L)
+{
+    int n = lua_gettop(L);
+    QString name = "main";
+    if (n >= 1) {
+        name = CMDLINE_NAME(L, 1);
+    }
+    auto commandline = COMMANDLINE(L, name);
+    commandline->selectAll();
+    return 1;
+}
+
 // Documentation: https://wiki.mudlet.org/w/Manual:Lua_Functions#getCmdLine
 int TLuaInterpreter::getCmdLine(lua_State* L)
 {
@@ -10533,7 +10685,7 @@ int TLuaInterpreter::setDefaultAreaVisible(lua_State* L)
 
     bool isToShowDefaultArea = getVerifiedBool(L, __func__, 1, "isToShowDefaultArea");
     if (host.mpMap->mpMapper) {
-        // If we are reenabled the display of the default area
+        // If we are re-enabling the display of the default area
         // AND the mapper was showing the default area
         // the area widget will NOT be showing the correct area name afterwards
         bool isAreaWidgetInNeedOfResetting = false;
@@ -10557,7 +10709,7 @@ int TLuaInterpreter::setDefaultAreaVisible(lua_State* L)
 
 // Documentation: https://wiki.mudlet.org/w/Manual:Lua_Functions#registerAnonymousEventHandler
 // The function below is mostly unused now as it is overwritten in lua.
-// The overwriting function poses as a transperant proxy and internally uses
+// The overwriting function poses as a transparent proxy and internally uses
 // this function to get called events.
 int TLuaInterpreter::registerAnonymousEventHandler(lua_State* L)
 {
@@ -11656,9 +11808,10 @@ void TLuaInterpreter::setCaptureGroups(const std::list<std::string>& captureList
      */
 }
 
-void TLuaInterpreter::setCaptureNameGroups(const NameGroupMatches& nameGroups)
+void TLuaInterpreter::setCaptureNameGroups(const NameGroupMatches& nameGroups, const NamedMatchesRanges& namePositions)
 {
     mCapturedNameGroups = nameGroups;
+    mCapturedNameGroupsPosList = namePositions;
 }
 
 // No documentation available in wiki - internal function
@@ -11669,6 +11822,7 @@ void TLuaInterpreter::clearCaptureGroups()
     mMultiCaptureGroupList.clear();
     mMultiCaptureGroupPosList.clear();
     mCapturedNameGroups.clear();
+    mCapturedNameGroupsPosList.clear();
     mMultiCaptureNameGroups.clear();
 
     lua_State* L = pGlobalLua;
@@ -11688,6 +11842,12 @@ void TLuaInterpreter::adjustCaptureGroups(int x, int a)
         if (it >= x) {
             it += a;
         }
+    }
+
+    NamedMatchesRanges::iterator i;
+    for (i = mCapturedNameGroupsPosList.begin(); i != mCapturedNameGroupsPosList.cend(); ++i) {
+        i.value().first += a;
+        i.value().second += a;
     }
 }
 
@@ -13309,7 +13469,7 @@ static lua_State* newstate()
 // No documentation available in wiki - internal function
 static void storeHostInLua(lua_State* L, Host* h);
 
-// No documentation available in wiki - internal helper funtion
+// No documentation available in wiki - internal helper function
 // On success will swap out any messages in the queue and replace them
 // with its success message, on failure will just append...
 bool TLuaInterpreter::loadLuaModule(QQueue<QString>& resultMsgsQueue, const QString& requirement, const QString& failureConsequence, const QString& description, const QString& luaModuleId)
@@ -13497,6 +13657,7 @@ void TLuaInterpreter::initLuaGlobals()
     lua_register(pGlobalLua, "selectCurrentLine", TLuaInterpreter::selectCurrentLine);
     lua_register(pGlobalLua, "spawn", TLuaInterpreter::spawn);
     lua_register(pGlobalLua, "getButtonState", TLuaInterpreter::getButtonState);
+    lua_register(pGlobalLua, "setButtonState", TLuaInterpreter::setButtonState);
     lua_register(pGlobalLua, "showToolBar", TLuaInterpreter::showToolBar);
     lua_register(pGlobalLua, "hideToolBar", TLuaInterpreter::hideToolBar);
     lua_register(pGlobalLua, "loadRawFile", TLuaInterpreter::loadReplay);
@@ -13632,6 +13793,7 @@ void TLuaInterpreter::initLuaGlobals()
     lua_register(pGlobalLua, "clearRoomUserDataItem", TLuaInterpreter::clearRoomUserDataItem);
     lua_register(pGlobalLua, "downloadFile", TLuaInterpreter::downloadFile);
     lua_register(pGlobalLua, "appendCmdLine", TLuaInterpreter::appendCmdLine);
+    lua_register(pGlobalLua, "selectCmdLineText", TLuaInterpreter::selectCmdLineText);
     lua_register(pGlobalLua, "getCmdLine", TLuaInterpreter::getCmdLine);
     lua_register(pGlobalLua, "addCmdLineSuggestion", TLuaInterpreter::addCmdLineSuggestion);
     lua_register(pGlobalLua, "removeCmdLineSuggestion", TLuaInterpreter::removeCmdLineSuggestion);
@@ -13830,6 +13992,9 @@ void TLuaInterpreter::initLuaGlobals()
     lua_register(pGlobalLua, "getProfileTabNumber", TLuaInterpreter::getProfileTabNumber);
     lua_register(pGlobalLua, "addFileWatch", TLuaInterpreter::addFileWatch);
     lua_register(pGlobalLua, "removeFileWatch", TLuaInterpreter::removeFileWatch);
+    lua_register(pGlobalLua, "addMouseEvent", TLuaInterpreter::addMouseEvent);
+    lua_register(pGlobalLua, "removeMouseEvent", TLuaInterpreter::removeMouseEvent);
+    lua_register(pGlobalLua, "getMouseEvents", TLuaInterpreter::getMouseEvents);
     // PLACEMARKER: End of main Lua interpreter functions registration
 
     QStringList additionalLuaPaths;
@@ -13879,9 +14044,9 @@ void TLuaInterpreter::initLuaGlobals()
      *     QString if needed for a placeholder for following arguments)
      * 4 - string describing the module (optional, for alternatives may be
      *     different and reflect the luarock name for the particular
-     *     alternative, when ommitted or a null/empty QString the second
+     *     alternative, when omitted or a null/empty QString the second
      *     argument is used instead)
-     * 5 - string used in Lua as the identifier for the loaded module/libary,
+     * 5 - string used in Lua as the identifier for the loaded module/library,
      *     passed as X in the lua 'X = require("name")' (optional, in which
      *     case nothing is put before the "require" in that usage and the module
      *     assumes whatever Lua name it offers).
@@ -14242,6 +14407,17 @@ QString TLuaInterpreter::readScriptFile(const QString& path) const
     }
 
     QTextStream in(&file);
+    in.setCodec(QTextCodec::codecForName("UTF-8"));
+
+    /*
+     * FIXME: Qt Documentation for this method reports:
+     * "Reads the entire content of the stream, and returns it as a QString.
+     * Avoid this function when working on large files, as it will consume a
+     * significant amount of memory.
+     *
+     * Calling readLine() is better if you do not know how much data is
+     * available."
+     */
     QString text = in.readAll();
     file.close();
 
@@ -14434,7 +14610,7 @@ std::pair<int, QString> TLuaInterpreter::startPermKey(QString& name, QString& pa
     TKey* pT;
 
     if (parent.isEmpty()) {
-        pT = new TKey("a", mpHost); // The use of "a" seems a bit arbitary...!
+        pT = new TKey("a", mpHost); // The use of "a" seems a bit arbitrary...!
     } else {
         TKey* pP = mpHost->getKeyUnit()->findFirstKey(parent);
         if (!pP) {
@@ -15083,7 +15259,7 @@ void TLuaInterpreter::updateAnsi16ColorsInTable()
     // Okay so now we point ourselves at the wanted table:
     lua_setfield(L, LUA_GLOBALSINDEX, "color_table");
 
-    // Now we can add/update the items we need to, though it is a bit repetative:
+    // Now we can add/update the items we need to, though it is a bit repetitive:
     QColor color = mpHost->mBlack;
     insertColorTableEntry(L, color, QStringLiteral("ansi_000"));
     insertColorTableEntry(L, color, QStringLiteral("ansi_black"));
@@ -15195,13 +15371,13 @@ void TLuaInterpreter::updateExtendedAnsiColorsInTable()
 
         lua_createtable(L, 3, 0);
 
-        lua_pushnumber(L, 51 * r);
+        lua_pushnumber(L, r == 0 ? 0 : (r - 1) * 40 + 95);
         lua_rawseti(L, -2, 1);
 
-        lua_pushnumber(L, 51 * g);
+        lua_pushnumber(L, g == 0 ? 0 : (g - 1) * 40 + 95);
         lua_rawseti(L, -2, 2);
 
-        lua_pushnumber(L, 51 * b);
+        lua_pushnumber(L, b == 0 ? 0 : (b - 1) * 40 + 95);
         lua_rawseti(L, -2, 3);
 
         lua_getfield(L, LUA_GLOBALSINDEX, "color_table");
@@ -15218,39 +15394,7 @@ void TLuaInterpreter::updateExtendedAnsiColorsInTable()
     for (int i = 232; i < 256; ++i) {
         lua_createtable(L, 3, 0);
 
-        int value = 128;
-        // Divide the range 0 to 255 into 23 + 1 values to give a 24 value
-        // greyscale - this is lifted from TBuffer::decodeSGR{3|4}8() - and
-        // we really ought to refactor things so we only have this in one common
-        // place:
-        switch (i) {
-            case 232:   value =   0; break; //   0.000
-            case 233:   value =  11; break; //  11.087
-            case 234:   value =  22; break; //  22.174
-            case 235:   value =  33; break; //  33.261
-            case 236:   value =  44; break; //  44.348
-            case 237:   value =  55; break; //  55.435
-            case 238:   value =  67; break; //  66.522
-            case 239:   value =  78; break; //  77.609
-            case 240:   value =  89; break; //  88.696
-            case 241:   value = 100; break; //  99.783
-            case 242:   value = 111; break; // 110.870
-            case 243:   value = 122; break; // 121.957
-            case 244:   value = 133; break; // 133.043
-            case 245:   value = 144; break; // 144.130
-            case 246:   value = 155; break; // 155.217
-            case 247:   value = 166; break; // 166.304
-            case 248:   value = 177; break; // 177.391
-            case 249:   value = 188; break; // 188.478
-            case 250:   value = 200; break; // 199.565
-            case 251:   value = 211; break; // 210.652
-            case 252:   value = 222; break; // 221.739
-            case 253:   value = 233; break; // 232.826
-            case 254:   value = 244; break; // 243.913
-            case 255:   value = 255; break; // 255.000
-            default:
-            Q_UNREACHABLE(); // We should not have a case outside of the range 232 to 255
-        }
+        int value = (i - 232) * 10 + 8;
 
         lua_pushnumber(L, value);
         lua_rawseti(L, -2, 1);
@@ -15274,7 +15418,7 @@ void TLuaInterpreter::updateExtendedAnsiColorsInTable()
 
 // Internal function - Creates a table for useful information from the http
 // response. It creates an empty table, calls upon other functions to
-// add things to it, and then returns a key to where it is in the lua registery.
+// add things to it, and then returns a key to where it is in the lua registry.
 int TLuaInterpreter::createHttpResponseTable(QNetworkReply* reply)
 {
     lua_State* L = pGlobalLua;
@@ -15620,5 +15764,74 @@ int TLuaInterpreter::removeFileWatch(lua_State * L)
     auto& host = getHostFromLua(L);
 
     lua_pushboolean(L, host.getLuaInterpreter()->mpFileSystemWatcher->removePath(path));
+    return 1;
+}
+
+// Documentation: https://wiki.mudlet.org/w/Manual:Lua_Functions#addMouseEvent
+int TLuaInterpreter::addMouseEvent(lua_State * L)
+{
+    Host& host = getHostFromLua(L);
+    QStringList actionInfo;
+    QString uniqueName = getVerifiedString(L, __func__, 1, "uniquename");
+    if (host.mConsoleActions.contains(uniqueName)) {
+        return warnArgumentValue(L, __func__, QStringLiteral("mouse event '%1' already exists").arg(uniqueName));
+    }
+
+    actionInfo << getVerifiedString(L, __func__, 2, "event name", false);
+
+    // Display name
+    if (!lua_isstring(L, 3)) {
+        actionInfo << uniqueName;
+    } else {
+        actionInfo << lua_tostring(L, 3);
+    }
+
+    // tooltip text
+    if (!lua_isstring(L, 4)) {
+        actionInfo << QString();
+    } else {
+        actionInfo << lua_tostring(L, 4);
+    }
+
+    host.mConsoleActions.insert(uniqueName, actionInfo);
+
+    lua_pushboolean(L, true);
+    return 1;
+}
+
+// Documentation: https://wiki.mudlet.org/w/Manual:Lua_Functions#removeMouseEvent
+int TLuaInterpreter::removeMouseEvent(lua_State * L)
+{
+    QString uniqueName = getVerifiedString(L, __func__, 1, "event name");
+    Host& host = getHostFromLua(L);
+    if (host.mConsoleActions.remove(uniqueName) == 0) {
+        return warnArgumentValue(L, __func__, QStringLiteral("mouse event '%1' does not exist").arg(uniqueName));
+    }
+
+    lua_pushboolean(L, true);
+    return 1;
+}
+
+// Documentation: https://wiki.mudlet.org/w/Manual:Lua_Functions#getMouseEvents
+int TLuaInterpreter::getMouseEvents(lua_State * L)
+{
+    Host& host = getHostFromLua(L);
+    // create the result table
+    lua_newtable(L);
+    QMapIterator<QString, QStringList> it(host.mConsoleActions);
+    while (it.hasNext()) {
+        it.next();
+        QStringList eventInfo = it.value();
+        lua_createtable(L, 0, 3);
+        lua_pushstring(L, eventInfo.at(0).toUtf8().constData());
+        lua_setfield(L, -2, "event name");
+        lua_pushstring(L, eventInfo.at(1).toUtf8().constData());
+        lua_setfield(L, -2, "display name");
+        lua_pushstring(L, eventInfo.at(2).toUtf8().constData());
+        lua_setfield(L, -2, "tooltip text");
+
+        // Add the mapEvent object to the result table
+        lua_setfield(L, -2, it.key().toUtf8().constData());
+    }
     return 1;
 }

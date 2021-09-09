@@ -463,7 +463,7 @@ void TMap::audit()
                         // Note that two of the last three arguments here
                         // (false, 40.0) are not the defaults (true, 30.0) used
                         // now:
-                        int newID = createMapLabel(areaID, l.text, l.pos.x(), l.pos.y(), l.pos.z(), l.fgColor, l.bgColor, true, false, 40.0, 50);
+                        int newID = createMapLabel(areaID, l.text, l.pos.x(), l.pos.y(), l.pos.z(), l.fgColor, l.bgColor, true, false, 40.0, 50, std::nullopt);
                         if (newID > -1) {
                             if (mudlet::self()->showMapAuditErrors()) {
                                 QString msg = tr("[ INFO ] - CONVERTING: old style label, areaID:%1 labelID:%2.").arg(areaID).arg(i);
@@ -598,7 +598,7 @@ void TMap::initGraph()
     unsigned int roomCount = 0;
     unsigned int edgeCount = 0;
     QSet<unsigned int> unUsableRoomSet;
-    // Keep track of the unusuable rather than the useable ones because that is
+    // Keep track of the unusable rather than the usable ones because that is
     // hopefully a MUCH smaller set in normal situations!
     QHashIterator<int, TRoom*> itRoom = mpRoomDB->getRoomMap();
     while (itRoom.hasNext()) {
@@ -822,7 +822,7 @@ void TMap::initGraph()
             }
         } // End of while(itSpecialExit.hasNext())
 
-        // Now we have eliminated possibe duplicate and useless edges we can create and
+        // Now we have eliminated possible duplicate and useless edges we can create and
         // insert the remainder into the BGL graph:
         QHashIterator<unsigned int, route> itRoute = bestRoutes;
         while (itRoute.hasNext()) {
@@ -841,7 +841,7 @@ void TMap::initGraph()
 
     mMapGraphNeedsUpdate = false;
     qDebug() << "TMap::initGraph() INFO: built graph with:" << locations.size() << "(" << roomCount << ") locations(roomCount), and discarded" << unUsableRoomSet.count()
-             << "other NOT useable rooms and found:" << edgeCount << "distinct, usable edges in:" << _time.nsecsElapsed() * 1.0e-6 << "ms.";
+             << "other NOT usable rooms and found:" << edgeCount << "distinct, usable edges in:" << _time.nsecsElapsed() * 1.0e-6 << "ms.";
 }
 
 bool TMap::findPath(int from, int to)
@@ -860,7 +860,7 @@ bool TMap::findPath(int from, int to)
     // passed, the data is empty - and valid for THAT case!
 
     if (from == to) {
-        return true; // Take a short-cut for trival "already there" case!
+        return true; // Take a short-cut for trivial "already there" case!
     }
 
     TRoom* pFrom = mpRoomDB->getRoom(from);
@@ -1480,9 +1480,13 @@ bool TMap::restore(QString location, bool downloadIfNotFound)
     }
 
     bool canRestore = true;
+    if (entries.empty() && location.isEmpty()) {
+        canRestore = false;
+    }
+
     QDataStream ifs;
     QFile file;
-    if (!entries.empty() || !location.isEmpty()) {
+    if (canRestore && (!entries.empty() || !location.isEmpty())) {
         // We get to here if there is one or more entries OR location is
         // supplied - if the latter then there is only one file to consider but
         // if the former we may have to check more than one to find a valid
@@ -1517,11 +1521,16 @@ bool TMap::restore(QString location, bool downloadIfNotFound)
 
            // Allow for somethings to be updated - especially on Windows?
            qApp->processEvents();
+        } else {
+            file.setFileName(location);
+            if (validatePotentialMapFile(file, ifs)) {
+                foundValidFile = true;
+            }
         }
         if (!foundValidFile) {
             canRestore = false;
         }
-    } else {
+    } else if (canRestore && !location.isEmpty()) {
         file.setFileName(location);
         canRestore = validatePotentialMapFile(file, ifs);
     }
@@ -2044,7 +2053,8 @@ bool TMap::retrieveMapFileStats(QString profile, QString* latestFileName = nullp
     return true;
 }
 
-int TMap::createMapLabel(int area, QString text, float x, float y, float z, QColor fg, QColor bg, bool showOnTop, bool noScaling, qreal zoom, int fontSize)
+//NOLINT(readability-make-member-function-const)
+int TMap::createMapLabel(int area, const QString& text, float x, float y, float z, QColor fg, QColor bg, bool showOnTop, bool noScaling, qreal zoom, int fontSize, std::optional<QString> fontName)
 {
     auto pA = mpRoomDB->getArea(area);
     if (!pA) {
@@ -2058,7 +2068,6 @@ int TMap::createMapLabel(int area, QString text, float x, float y, float z, QCol
     TMapLabel label;
     label.text = text;
     label.bgColor = bg;
-    label.bgColor.setAlpha(50);
     label.fgColor = fg;
     label.size = QSizeF(100, 100);
     label.pos = QVector3D(x, y, z);
@@ -2072,8 +2081,7 @@ int TMap::createMapLabel(int area, QString text, float x, float y, float z, QCol
     lp.fillRect(lr, label.bgColor);
     QPen lpen;
     lpen.setColor(label.fgColor);
-    QFont font;
-    font.setPointSize(fontSize); //good: font size = 50, zoom = 30.0
+    QFont font(fontName.has_value() ? fontName.value() : QString(), fontSize);
     lp.setRenderHint(QPainter::TextAntialiasing, true);
     lp.setPen(lpen);
     lp.setFont(font);
@@ -2867,7 +2875,7 @@ std::pair<bool, QString> TMap::writeJsonMapFile(const QString& dest)
         // "colorRGBA"
         writeJsonColor(customEnvColorObj, itCustomEnvColor.value());
         customEnvColorObj.insert(QLatin1String("id"), QJsonValue{itCustomEnvColor.key()});
-        // Covert the customEnvColorObj into a QJsonValue:
+        // Convert the customEnvColorObj into a QJsonValue:
         const QJsonValue customEnvColorValue{customEnvColorObj};
         // Now append this object onto the array:
         customEnvColorArray.append(customEnvColorValue);
@@ -3047,7 +3055,7 @@ std::pair<bool, QString> TMap::readJsonMapFile(const QString& source, const bool
     if (mapObj.contains(QLatin1String("customEnvColors")) && mapObj.value(QLatin1String("customEnvColors")).isArray()) {
         const QJsonArray customEnvColorArray = mapObj.value(QLatin1String("customEnvColors")).toArray();
         if (!customEnvColorArray.isEmpty()) {
-            for (auto customEnvColorValue : qAsConst(customEnvColorArray)) {
+            for (const auto& customEnvColorValue : qAsConst(customEnvColorArray)) {
                 const QJsonObject customEnvColorObj{customEnvColorValue.toObject()};
                 if (customEnvColorObj.contains(QLatin1String("id"))
                     && ((customEnvColorObj.contains(QLatin1String("color32RGBA")) && customEnvColorObj.value(QLatin1String("color32RGBA")).isArray())
@@ -3123,6 +3131,12 @@ std::pair<bool, QString> TMap::readJsonMapFile(const QString& source, const bool
     // This is it - the point at which the new map gets activated:
     TRoomDB* pOldRoomDB = mpRoomDB;
     mpRoomDB = pNewRoomDB;
+    // Need to update the master copy of these details in the Host class:
+    mpHost->setPlayerRoomStyleDetails(mPlayerRoomStyle, mPlayerRoomOuterDiameterPercentage, mPlayerRoomInnerDiameterPercentage, mPlayerRoomOuterColor, mPlayerRoomInnerColor);
+    // And redraw the indicator if a 2D map is being shown:
+    if (mpMapper && mpMapper->mp2dMap) {
+        mpMapper->mp2dMap->setPlayerRoomStyle(mPlayerRoomStyle);
+    }
     delete pOldRoomDB;
     mpProgressDialog->setAttribute(Qt::WA_DeleteOnClose, true);
     mpProgressDialog->close();
@@ -3315,9 +3329,9 @@ QColor TMap::getColor(int id)
                 quint8 g = (base - (r * 36)) / 6;
                 quint8 b = (base - (r * 36)) - (g * 6);
 
-                r = r * 51;
-                g = g * 51;
-                b = b * 51;
+                r = r == 0 ? 0 : (r - 1) * 40 + 95;
+                g = g == 0 ? 0 : (g - 1) * 40 + 95;
+                b = b == 0 ? 0 : (b - 1) * 40 + 95;
                 color = QColor(r, g, b, 255);
             } else if (231 < env && env < 256) {
                 quint8 k = ((env - 232) * 10) + 8;
