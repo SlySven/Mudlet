@@ -217,7 +217,7 @@ public:
     // delimited pairs of hex digits will be shown after the Replacement
     // Character so that someone who understands what is going on can see why
     // the decoder barfed over the data:
-    bool mShowUndecodeableBytes = true;
+    bool mShowUndecodeableBytes = false;
 
 public slots:
     void setDownloadProgress(qint64, qint64);

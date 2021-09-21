@@ -41,6 +41,7 @@
 #include <QDesktopServices>
 #include <QHash>
 #include <QPainter>
+#include <QRegularExpression>
 #include <QScrollBar>
 #include <QTextBoundaryFinder>
 #include <QToolTip>
@@ -515,6 +516,14 @@ void TTextEdit::drawLine(QPainter& painter, int lineNumber, int lineOfScreen, in
 // In some situations "start" will be modified
 int TTextEdit::drawGraphemeBackground(QPainter& painter, int& start, QVector<QColor>& fgColors, QVector<QRect>& textRects, QVector<QString>& graphemes, QVector<int>& charWidths, QPoint& cursor, const QString& lineBuffer, const int length, const int column, const TChar& charStyle) const
 {
+#if (QT_VERSION >= QT_VERSION_CHECK(5, 14, 0))
+    const QColor encodingErrorFgColor{QColorConstants::Red};
+    const QColor encodingErrorBgColor{QColorConstants::Yellow};
+#else
+    const QColor encodingErrorFgColor{Qt::red};
+    const QColor encodingErrorBgColor{Qt::yellow};
+#endif
+    bool encodingErrorDetected = false;
     static const QString replacementCharacter{QChar::ReplacementCharacter};
     // We use a static one so that we can optimize it once and forever:
     static QRegularExpression hiddenHexCodeRegEx{};
@@ -566,6 +575,7 @@ int TTextEdit::drawGraphemeBackground(QPainter& painter, int& start, QVector<QCo
         // a hidden hex digit representation of some undecodable bytes:
         QRegularExpressionMatch match = hiddenHexCodeRegEx.match(lineBuffer.mid(start));
         if (match.hasMatch()) {
+            encodingErrorDetected = true;
             QString encodedRawHexDigits{match.captured(1)};
             if (mpHost && mpHost->mTelnet.mShowUndecodeableBytes) {
                 Q_ASSERT_X(encodedRawHexDigits.length() % 2 == 0, "TTextEdit::drawGraphemeBackground(...)", "Odd number of digits in hiddden bytes - this should not happen!");
@@ -615,7 +625,12 @@ int TTextEdit::drawGraphemeBackground(QPainter& painter, int& start, QVector<QCo
     auto textRect = QRect(mFontWidth * cursor.x(), mFontHeight * cursor.y(), mFontWidth * charWidth, mFontHeight);
     textRects.append(textRect);
     QColor bgColor;
-    if (Q_UNLIKELY(static_cast<bool>(attributes & TChar::Reverse) != charStyle.isSelected())) {
+    if (Q_UNLIKELY(encodingErrorDetected)) {
+        // Only force the colors if it is an encoding error (should the
+        // character be used in any other way it will use the normal coloration:
+        bgColor = encodingErrorBgColor;
+        fgColors.append(encodingErrorFgColor);
+    } else if (Q_UNLIKELY(static_cast<bool>(attributes & TChar::Reverse) != charStyle.isSelected())) {
         fgColors.append(charStyle.background());
         bgColor = charStyle.foreground();
     } else {

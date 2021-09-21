@@ -786,16 +786,29 @@ COMMIT_LINE:
             } else {
                 auto character = encodingLookupTable.at(index - 128);
                 mMudLine.append(character);
-                if (character == QChar(0xFFFD)) {
+                if (character == QChar::ReplacementCharacter) {
                     // If the replacement character is used it means the byte is
                     // not encoded - so embed the raw byte (as a pair of
                     // non-characters) after it:
                     mMudLine.append(encodeRawByteToHidden(index));
                     extraTCharsNeeded = 2;
+                    mpHost->mpConsole->showWarningIcon(0);
                 }
             }
         } else if (mEncoding == "ISO 8859-1") {
-            mMudLine.append(QString(QChar::fromLatin1(ch)));
+            // We need to filter out (and reject) C1 control characters - for
+            // consistency with the other ISO 8859 encodings
+            // QChar::fromLatin1(...) doesn't do this...
+            auto index = static_cast<quint8>(ch);
+            if (index >= 0x80 && index <= 0x9F) {
+                mMudLine.append(QChar::ReplacementCharacter);
+                mMudLine.append(encodeRawByteToHidden(index));
+                extraTCharsNeeded = 2;
+                mpHost->mpConsole->showWarningIcon(0);
+            } else {
+                // Is okay
+                mMudLine.append(QString(QChar::fromLatin1(ch)));
+            }
         } else if (mEncoding == "GBK") {
             if (!processGBSequence(localBuffer, isFromServer, false, localBufferLength, localBufferPosition, extraTCharsNeeded)) {
                 // We have run out of bytes and we have stored the unprocessed
@@ -823,13 +836,14 @@ COMMIT_LINE:
         } else {
             // Default - no encoding case - reject anything that has MS Bit set
             // as that isn't ASCII which is what no encoding specifies!
-            if (ch & 0x80) {
-                // Was going to ignore this byte, not add a TChar instance
-                // either and move on:
-                // ++localBufferPosition;
-                // continue;
-                // but instead insert the "Replacement Character Marker"
+            auto index = static_cast<quint8>(ch);
+            if (index & 0x80) {
+                // No good - insert the "Replacement Character Marker" and the
+                // hidden byte value:
                 mMudLine.append(QChar::ReplacementCharacter);
+                mMudLine.append(encodeRawByteToHidden(index));
+                extraTCharsNeeded = 2;
+                mpHost->mpConsole->showWarningIcon(0);
             } else {
                 mMudLine.append(ch);
             }
@@ -3451,7 +3465,7 @@ bool TBuffer::processUtf8Sequence(const std::string& bufferData, const bool isFr
                 QString rawBytes;
                 mMudLine.append(QChar::ReplacementCharacter);
                 for (const auto rawByte : bufferData.substr(pos, utf8SequenceLength)) {
-                    rawBytes.append(encodeRawByteToHidden(rawByte));
+                    rawBytes.append(encodeRawByteToHidden(static_cast<unsigned char>(rawByte)));
                 }
                 mMudLine.append(rawBytes);
                 // The replacement character is a single QChar and it takes the
@@ -3459,7 +3473,9 @@ bool TBuffer::processUtf8Sequence(const std::string& bufferData, const bool isFr
                 // sequence, each rawByte though will contribute 2 hex-digits
                 // which are encoded as specific non-character codepoints so
                 // they need the same number of extra TChars:
-                extraTCharsNeeded = rawBytes.size();
+                extraTCharsNeeded = static_cast<quint8>(rawBytes.size());
+                // Trigger the incoming encoding problem warning icon:
+                mpHost->mpConsole->showWarningIcon(0);
             } else if (isToUseByteOrderMark) {
                 // Technically this is valid but we have to handle it specially:
                 mMudLine.append(QChar::ByteOrderMark);
@@ -4057,6 +4073,7 @@ bool TBuffer::processBig5Sequence(const std::string& bufferData, const bool isFr
             // which are encoded as specific non-character codepoints so
             // they need the same number of extra TChars:
             extraTCharsNeeded = rawBytes.size();
+            mpHost->mpConsole->showWarningIcon(0);
         }
     }
 

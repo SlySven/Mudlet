@@ -129,6 +129,7 @@ public slots:
     void slot_resetReceiveEncodingErrorWarning();
     void slot_resetTransmitEncodingErrorWarning();
     void slot_gotoAdjustEncoding();
+    void slot_toggleRawBytes(const bool);
 
 
 signals:

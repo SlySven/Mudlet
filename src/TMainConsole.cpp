@@ -1381,7 +1381,14 @@ void TMainConsole::showWarningIcon(const int type)
         auto pAdjust = pMenu->addAction(tr("Go to settings"), this, &TMainConsole::slot_gotoAdjustEncoding);
         pAdjust->setToolTip(tr("Go to the preferences setting that might fix it.").prepend(QLatin1String("<p>")).append(QLatin1String("</p>")));
 
-        menuToolTip = tr("A problem has been discovered in the Game Server encoding when processing the data received from it; click the menu to choose how to deal with this.")
+        pMenu->addSeparator();
+        auto pToggleRawBytesDisplay = pMenu->addAction(tr("Show original bytes"), this, &TMainConsole::slot_toggleRawBytes);
+        pToggleRawBytesDisplay->setToolTip(tr("Toggle the display of the raw hexadecimal bytes that caused the display of each %1 in the main console.").arg(QChar::ReplacementCharacter).prepend(QLatin1String("<p>")).append(QLatin1String("</p>")));
+        pToggleRawBytesDisplay->setCheckable(true);
+        pToggleRawBytesDisplay->setChecked(mpHost && mpHost->mTelnet.mShowUndecodeableBytes);
+
+        menuToolTip = tr("A problem has been discovered in the Game Server encoding when processing the data received from it; "
+                         "click the menu to choose how to deal with this.")
                               .prepend(QLatin1String("<p>"))
                               .append(QLatin1String("</p>"));
     } else if (type == 1) {
@@ -1400,7 +1407,9 @@ void TMainConsole::showWarningIcon(const int type)
         menuToolTip = tr("A problem has been discovered in the Game Server encoding when processing the "
                          "data you or a script or package is trying to send to it, one or more characters "
                          "can not be conveyed in the current encoding and thus has had to be removed from "
-                         "what was sent; click the menu to choose how to deal with this warning.").prepend(QLatin1String("<p>")).append(QLatin1String("</p>"));
+                         "what was sent; click the menu to choose how to deal with this warning.")
+                              .prepend(QLatin1String("<p>"))
+                              .append(QLatin1String("</p>"));
     } else {
         Q_UNREACHABLE();
     }
@@ -1457,9 +1466,26 @@ void TMainConsole::slot_ignoreTransmitEncodingErrorWarning()
     hideWarningIcon(1);
 }
 
-void TMainConsole::slot_resetReceiveEncodingErrorWarning() {}
+void TMainConsole::slot_resetReceiveEncodingErrorWarning()
+{
+    auto pHost = mpHost;
+    if (!pHost) {
+        return;
+    }
+    pHost->mTelnet.mReceiveEncodingWarningIssued = false;
+    hideWarningIcon(0);
+}
 
-void TMainConsole::slot_ignoreReceiveEncodingErrorWarning() {}
+void TMainConsole::slot_ignoreReceiveEncodingErrorWarning()
+{
+    auto pHost = mpHost;
+    if (!pHost) {
+        return;
+    }
+    pHost->mTelnet.mReceiveEncodingWarningIssued = false;
+    pHost->mTelnet.mReceiveEncodingWarningsIgnored = true;
+    hideWarningIcon(0);
+}
 
 void TMainConsole::slot_gotoAdjustEncoding()
 {
@@ -1471,4 +1497,18 @@ void TMainConsole::slot_gotoAdjustEncoding()
     mudlet::self()->show_options_dialog(QLatin1String("tab_general"));
     pHost->mpDlgProfilePreferences->comboBox_encoding->setFocus(Qt::OtherFocusReason);
     pHost->mpDlgProfilePreferences->comboBox_encoding->activateWindow();
+}
+
+void TMainConsole::slot_toggleRawBytes(const bool checked)
+{
+    auto pHost = mpHost;
+    if (!pHost) {
+        return;
+    }
+
+    if (pHost->mTelnet.mShowUndecodeableBytes != checked) {
+        pHost->mTelnet.mShowUndecodeableBytes = checked;
+        mUpperPane->forceUpdate();
+        mLowerPane->forceUpdate();
+    }
 }
