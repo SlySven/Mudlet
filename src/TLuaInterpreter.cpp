@@ -1771,6 +1771,7 @@ int TLuaInterpreter::paste(lua_State* L)
 // Documentation: https://wiki.mudlet.org/w/Manual:Lua_Functions#feedTriggers
 int TLuaInterpreter::feedTriggers(lua_State* L)
 {
+    static bool debugEncoding = true;
     Host& host = getHostFromLua(L);
     if (!lua_isstring(L, 1)) {
         lua_pushfstring(L,
@@ -1803,10 +1804,12 @@ int TLuaInterpreter::feedTriggers(lua_State* L)
         auto* pDataCodec = QTextCodec::codecForName(currentEncoding);
         auto* pDataEncoder = pDataCodec->makeEncoder(QTextCodec::IgnoreHeader);
         if (!(currentEncoding.isEmpty() || currentEncoding == "ASCII")) {
-            if (!pDataCodec->canEncode(dataQString)) {
-                return warnArgumentValue(L, __func__, QStringLiteral(
-                    "cannot send '%1' as it contains one or more characters that cannot be conveyed in the current game server encoding of '%2'")
-                    .arg(data.constData(), currentEncoding.constData()));
+            if (!debugEncoding) {
+                if (!pDataCodec->canEncode(dataQString)) {
+                    return warnArgumentValue(L, __func__, QStringLiteral(
+                                                                  "cannot send '%1' as it contains one or more characters that cannot be conveyed in the current game server encoding of '%2'")
+                                                                  .arg(data.constData(), currentEncoding.constData()));
+                }
             }
 
             std::string encodedText{pDataEncoder->fromUnicode(dataQString).toStdString()};
@@ -1816,11 +1819,13 @@ int TLuaInterpreter::feedTriggers(lua_State* L)
         }
 
         // else plain, raw ASCII, we hope!
-        for (int i = 0, total = dataQString.size(); i < total; ++i) {
-            if (dataQString.at(i).row() || dataQString.at(i).cell() > 127) {
-                return warnArgumentValue(L, __func__, QStringLiteral(
-                    "cannot send '%1' as it contains one or more characters that cannot be conveyed in the current game server encoding of 'ASCII'")
-                    .arg(data.constData()));
+        if (!debugEncoding) {
+            for (int i = 0, total = dataQString.size(); i < total; ++i) {
+                if (dataQString.at(i).row() || dataQString.at(i).cell() > 127) {
+                    return warnArgumentValue(L, __func__, QStringLiteral(
+                                                                  "cannot send '%1' as it contains one or more characters that cannot be conveyed in the current game server encoding of 'ASCII'")
+                                                                  .arg(data.constData()));
+                }
             }
         }
 
