@@ -2281,8 +2281,8 @@ void TTextEdit::slot_analyseSelection()
     // We do not want more than around 16 code-points per row, but we also do
     // not want orphans (a few odd code-points) on the last row so deduce a
     // number of items to include in a row:
-    quint8 rowsCount = qMax(1, qRound((total + 8.5) / 16.0));
-    quint8 rowLimit = qMax(8, qRound(total * 1.0 / rowsCount));
+    auto rowsCount = static_cast<quint8>(qMax(1, qRound((total + 8.5) / 16.0)));
+    auto rowLimit = static_cast<quint8>(qMax(8, qRound(total * 1.0 / rowsCount)));
     bool isFirstRow = true;
 
     for (int index = 0; index < lineLength; ++index) {
@@ -2292,9 +2292,10 @@ void TTextEdit::slot_analyseSelection()
         }
 
         if (mpBuffer->lineBuffer.at(line).at(index).isHighSurrogate() && ((index + 1) < lineLength)) {
+            // This Unicode codepoint is not in the BMP and uses two QChars
             strncpy(utf8Bytes, mpBuffer->lineBuffer.at(line).mid(index, 2).toUtf8().constData(), 4);
             size_t utf8Width = strnlen(utf8Bytes, 4);
-            quint8 columnsToUse = qMax(static_cast<size_t>(2), utf8Width);
+            auto columnsToUse = static_cast<quint8>(qMax(static_cast<size_t>(2), utf8Width));
 
             if (includeThisCodePoint) {
                 utf16indexes.append(QStringLiteral("<th colspan=\"%1\"><center>%2 & %3</center></th>").arg(QString::number(columnsToUse), QString::number(index + 1), QString::number(index + 2)));
@@ -2305,15 +2306,16 @@ void TTextEdit::slot_analyseSelection()
                 // &#8232; is the Unicode Line Separator
                 utf16Vals.append(
                         QStringLiteral("<td colspan=\"%1\" style=\"white-space:no-wrap vertical-align:top\"><center>%2</center>&#8232;<center>(0x%3:0x%4)</center></td>")
-                                .arg(QString::number(columnsToUse))
-                                .arg(QStringLiteral("%1").arg(QChar::surrogateToUcs4(mpBuffer->lineBuffer.at(line).at(index), mpBuffer->lineBuffer.at(line).at(index + 1)), 4, 16, zero).toUpper())
+                                .arg(QString::number(columnsToUse),
+                                     QStringLiteral("%1")
+                                             .arg(QChar::surrogateToUcs4(mpBuffer->lineBuffer.at(line).at(index), mpBuffer->lineBuffer.at(line).at(index + 1)), 4, 16, zero).toUpper())
                                 .arg(mpBuffer->lineBuffer.at(line).at(index).unicode(), 4, 16, zero)
                                 .arg(mpBuffer->lineBuffer.at(line).at(index + 1).unicode(), 4, 16, zero));
 
                 // Note the addition to the index here to jump over the low-surrogate:
                 graphemes.append(QStringLiteral("<td colspan=\"%1\">%2</td>")
-                                         .arg(QString::number(columnsToUse))
-                                         .arg(convertWhitespaceToVisual(mpBuffer->lineBuffer.at(line).at(index), mpBuffer->lineBuffer.at(line).at(index + 1))));
+                                         .arg(QString::number(columnsToUse),
+                                              convertWhitespaceToVisual(mpBuffer->lineBuffer.at(line).at(index), mpBuffer->lineBuffer.at(line).at(index + 1))));
             }
 
             switch (utf8Width) {
@@ -2371,9 +2373,10 @@ void TTextEdit::slot_analyseSelection()
             // for the surrogate pair:
             index += 1;
         } else {
+            // This Unicode codepoint is in the BMP and uses a single QChar
             strncpy(utf8Bytes, mpBuffer->lineBuffer.at(line).mid(index, 1).toUtf8().constData(), 4);
             size_t utf8Width = strnlen(utf8Bytes, 4);
-            quint8 columnsToUse = qMax(static_cast<size_t>(1), utf8Width);
+            auto columnsToUse = static_cast<quint8>(qMax(static_cast<size_t>(1), utf8Width));
 
             if (includeThisCodePoint) {
                 utf16indexes.append(QStringLiteral("<th colspan=\"%1\"><center>%2</center></th>").arg(QString::number(columnsToUse), QString::number(index + 1)));
@@ -2461,24 +2464,24 @@ void TTextEdit::slot_analyseSelection()
                                        "</table></small><br>")
                                 .arg(tr("Index (UTF-16)",
                                         "1st Row heading for Text analyser output, table item is the count into the QChars/TChars that make up the text {this translation used 2 times}"),
-                                     utf16indexes)
-                                .arg(tr("U+<i>####</i> Unicode Code-point <i>(High:Low Surrogates)</i>",
+                                     utf16indexes,
+                                     tr("U+<i>####</i> Unicode Code-point <i>(High:Low Surrogates)</i>",
                                         "2nd Row heading for Text analyser output, table item is the unicode code point (will be "
                                         "between 000001 and 10FFFF in hexadecimal) {this translation used 2 times}"),
-                                     utf16Vals)
-                                .arg(tr("Visual",
+                                     utf16Vals,
+                                     tr("Visual",
                                         "3rd Row heading for Text analyser output, table item is a visual representation of the character/part of the character or a '{'...'}' wrapped "
                                         "letter code if the character is whitespace or otherwise unshowable {this translation used 2 times}"),
-                                     graphemes)
-                                .arg(tr("Index (UTF-8)",
+                                     graphemes,
+                                     tr("Index (UTF-8)",
                                         "4th Row heading for Text analyser output, table item is the count into the bytes that make up the UTF-8 form of the text that the Lua system "
                                         "uses {this translation used 2 times}"),
                                      utf8Indexes)
                                 .arg(tr("Byte",
                                         "5th Row heading for Text analyser output, table item is the unsigned 8-bit integer for the particular byte in the UTF-8 form of the text that the Lua "
                                         "system uses {this translation used 2 times}"),
-                                     utf8Vals)
-                                .arg(tr("Lua character or code",
+                                     utf8Vals,
+                                     tr("Lua character or code",
                                         "6th Row heading for Text analyser output, table item is either the ASCII character or the numeric code for the byte in the row about "
                                         "this item in the table, as displayed the thing shown can be used in a Lua string entry to reproduce this byte {this translation used "
                                         "2 times}"),
@@ -2494,7 +2497,12 @@ void TTextEdit::slot_analyseSelection()
                                        "<tr>%5</tr>"
                                        "<tr>%6</tr>"
                                        "</table></small><br>")
-                                .arg(utf16indexes, utf16Vals, graphemes, utf8Indexes, utf8Vals, luaCodes));
+                                .arg(utf16indexes,
+                                     utf16Vals,
+                                     graphemes,
+                                     utf8Indexes,
+                                     utf8Vals,
+                                     luaCodes));
             }
             rowItems = 0;
             utf16indexes.clear();
@@ -2520,26 +2528,26 @@ void TTextEdit::slot_analyseSelection()
                                    "<tr><th>%10</th>%11</tr>"
                                    "<tr><th>%12</th>%13</tr>"
                                    "</table></small></body></html>")
-                            .arg(completedRows)
-                            .arg(tr("Index (UTF-16)", "1st Row heading for Text analyser output, table item is the count into the QChars/TChars that make up the text {this translation used 2 times}"),
-                                 utf16indexes)
-                            .arg(tr("U+<i>####</i> Unicode Code-point <i>(High:Low Surrogates)</i>",
+                            .arg(completedRows,
+                                 tr("Index (UTF-16)", "1st Row heading for Text analyser output, table item is the count into the QChars/TChars that make up the text {this translation used 2 times}"),
+                                 utf16indexes,
+                                 tr("U+<i>####</i> Unicode Code-point <i>(High:Low Surrogates)</i>",
                                     "2nd Row heading for Text analyser output, table item is the unicode code point (will be between "
                                     "000001 and 10FFFF in hexadecimal) {this translation used 2 times}"),
-                                 utf16Vals)
-                            .arg(tr("Visual",
+                                 utf16Vals,
+                                 tr("Visual",
                                     "3rd Row heading for Text analyser output, table item is a visual representation of the character/part of the character or a '{'...'}' wrapped letter "
                                     "code if the character is whitespace or otherwise unshowable {this translation used 2 times}"),
-                                 graphemes)
-                            .arg(tr("Index (UTF-8)",
+                                 graphemes,
+                                 tr("Index (UTF-8)",
                                     "4th Row heading for Text analyser output, table item is the count into the bytes that make up the UTF-8 form of the text that the Lua system "
                                     "uses {this translation used 2 times}"),
                                  utf8Indexes)
                             .arg(tr("Byte",
                                     "5th Row heading for Text analyser output, table item is the unsigned 8-bit integer for the particular byte in the UTF-8 form of the text that the Lua "
                                     "system uses {this translation used 2 times}"),
-                                 utf8Vals)
-                            .arg(tr("Lua character or code",
+                                 utf8Vals,
+                                 tr("Lua character or code",
                                     "6th Row heading for Text analyser output, table item is either the ASCII character or the numeric code for the byte in the row about "
                                     "this item in the table, as displayed the thing shown can be used in a Lua string entry to reproduce this byte {this translation used 2 "
                                     "times}"),
