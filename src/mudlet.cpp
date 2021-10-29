@@ -4368,6 +4368,7 @@ void mudlet::activateProfile(Host* pHost)
         }
         mpCurrentActiveHost = pHost;
         dactionInputLine->setChecked(mpCurrentActiveHost->getCompactInputLine());
+        pHost->updateDisplayDimensions();
     }
 }
 
