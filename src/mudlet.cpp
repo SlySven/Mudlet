@@ -26,6 +26,7 @@
 
 #include "mudlet.h"
 
+#include "AltFocusMenuBarDisable.h"
 #include "EAction.h"
 #include "LuaInterface.h"
 #include "TCommandLine.h"
@@ -41,6 +42,7 @@
 #include "TTextEdit.h"
 #include "TToolBar.h"
 #include "XMLimport.h"
+#include "DarkTheme.h"
 #include "dlgAboutDialog.h"
 #include "dlgConnectionProfiles.h"
 #include "dlgIRC.h"
@@ -74,6 +76,7 @@
 #include <QTimer>
 #include <QToolBar>
 #include <QToolButton>
+#include <QToolTip>
 #include <QVariantHash>
 #include <QRandomGenerator>
 #include <zip.h>
@@ -248,17 +251,20 @@ mudlet::mudlet()
     }
 
     qApp->setAttribute(Qt::AA_UseHighDpiPixmaps);
+    mDefaultStyle = qApp->style()->objectName();
 
     scanForMudletTranslations(QStringLiteral(":/lang"));
     scanForQtTranslations(getMudletPath(qtTranslationsPath));
     loadTranslators(mInterfaceLanguage);
-
-    if (QString stylefactory = qApp->style()->objectName(); QStringList{"windowsvista", "macintosh"}.contains(stylefactory, Qt::CaseInsensitive)) {
-        qDebug().nospace().noquote() << "mudlet::mudlet() INFO - '" << stylefactory << "' has been detected as the style factory in use - QPushButton styling fix applied!";
+    if (mDarkTheme) {
+        setDarkTheme(mDarkTheme);
+    }
+    if (QStringList{"windowsvista", "macintosh"}.contains(mDefaultStyle, Qt::CaseInsensitive)) {
+        qDebug().nospace().noquote() << "mudlet::mudlet() INFO - '" << mDefaultStyle << "' has been detected as the style factory in use - QPushButton styling fix applied!";
         mBG_ONLY_STYLESHEET = QStringLiteral("QPushButton {background-color: %1; border: 1px solid #8f8f91;}");
         mTEXT_ON_BG_STYLESHEET = QStringLiteral("QPushButton {color: %1; background-color: %2; border: 1px solid #8f8f91;}");
     } else {
-        qDebug().nospace().noquote() << "mudlet::mudlet() INFO - '" << stylefactory << "' has been detected as the style factory in use - no styling fixes applied.";
+        qDebug().nospace().noquote() << "mudlet::mudlet() INFO - '" << mDefaultStyle << "' has been detected as the style factory in use - no styling fixes applied.";
         mBG_ONLY_STYLESHEET = QStringLiteral("QPushButton {background-color: %1;}");
         mTEXT_ON_BG_STYLESHEET = QStringLiteral("QPushButton {color: %1; background-color: %2;}");
     }
@@ -559,6 +565,18 @@ mudlet::mudlet()
     connect(dactionIRC, &QAction::triggered, this, &mudlet::slot_irc);
     connect(dactionDiscord, &QAction::triggered, this, &mudlet::slot_discord);
     connect(dactionLiveHelpChat, &QAction::triggered, this, &mudlet::slot_irc);
+    connect(dactionShowErrors, &QAction::triggered, [=]() {
+        auto host = getActiveHost();
+        if (!host) {
+            return;
+        }
+        host->mpEditorDialog->slot_show_current();
+        host->mpEditorDialog->raise();
+        host->mpEditorDialog->showNormal();
+        host->mpEditorDialog->activateWindow();
+        host->mpEditorDialog->mpErrorConsole->setVisible(true);
+    });
+
 #if defined(INCLUDE_UPDATER)
     // Show the update option if the code is present AND if this is a
     // release OR a public test version:
@@ -618,42 +636,6 @@ mudlet::mudlet()
     disconnectKeySequence = QKeySequence(Qt::ALT | Qt::Key_D);
     reconnectKeySequence = QKeySequence(Qt::ALT | Qt::Key_R);
 #endif
-
-    triggersShortcut = new QShortcut(triggersKeySequence, this);
-    connect(triggersShortcut.data(), &QShortcut::activated, this, &mudlet::show_editor_dialog);
-    showMapShortcut = new QShortcut(showMapKeySequence, this);
-    connect(showMapShortcut.data(), &QShortcut::activated, this, &mudlet::slot_mapper);
-    inputLineShortcut = new QShortcut(inputLineKeySequence, this);
-    connect(inputLineShortcut.data(), &QShortcut::activated, this, &mudlet::slot_toggle_compact_input_line);
-    optionsShortcut = new QShortcut(optionsKeySequence, this);
-    connect(optionsShortcut.data(), &QShortcut::activated, this, &mudlet::slot_show_options_dialog);
-    notepadShortcut = new QShortcut(notepadKeySequence, this);
-    connect(notepadShortcut.data(), &QShortcut::activated, this, &mudlet::slot_notes);
-    packagesShortcut = new QShortcut(packagesKeySequence, this);
-    connect(packagesShortcut.data(), &QShortcut::activated, this, &mudlet::slot_show_options_dialog);
-    modulesShortcut = new QShortcut(packagesKeySequence, this);
-    connect(modulesShortcut.data(), &QShortcut::activated, this, &mudlet::slot_module_manager);
-    multiViewShortcut = new QShortcut(multiViewKeySequence, this);
-    connect(multiViewShortcut.data(), &QShortcut::activated, this, &mudlet::slot_toggle_multi_view);
-    connectShortcut = new QShortcut(connectKeySequence, this);
-    connect(connectShortcut.data(), &QShortcut::activated, this, &mudlet::slot_show_connection_dialog);
-    disconnectShortcut = new QShortcut(disconnectKeySequence, this);
-    connect(disconnectShortcut.data(), &QShortcut::activated, this, &mudlet::slot_disconnect);
-    reconnectShortcut = new QShortcut(reconnectKeySequence, this);
-    connect(reconnectShortcut.data(), &QShortcut::activated, this, &mudlet::slot_reconnect);
-
-    dactionScriptEditor->setShortcut(triggersKeySequence);
-    dactionShowMap->setShortcut(showMapKeySequence);
-    dactionInputLine->setShortcut(inputLineKeySequence);
-    dactionOptions->setShortcut(optionsKeySequence);
-    dactionNotepad->setShortcut(notepadKeySequence);
-    dactionPackageManager->setShortcut(packagesKeySequence);
-    dactionModuleManager->setShortcut(modulesKeySequence);
-    dactionMultiView->setShortcut(multiViewKeySequence);
-    dactionConnect->setShortcut(connectKeySequence);
-    dactionDisconnect->setShortcut(disconnectKeySequence);
-    dactionReconnect->setShortcut(reconnectKeySequence);
-
     connect(this, &mudlet::signal_menuBarVisibilityChanged, this, &mudlet::slot_update_shortcuts);
 
     mpSettings = getQSettings();
@@ -1541,7 +1523,7 @@ void mudlet::addConsoleForNewHost(Host* pH)
 
 void mudlet::slot_timer_fires()
 {
-    QTimer* pQT = (QTimer*)sender();
+    QTimer* pQT = qobject_cast<QTimer*>(sender());
     if (Q_UNLIKELY(!pQT)) {
         return;
     }
@@ -1729,7 +1711,6 @@ void mudlet::commitLayoutUpdates(bool flush)
 void mudlet::showEvent(QShowEvent* event)
 {
     mWindowMinimized = false;
-    slot_update_shortcuts();
     QMainWindow::showEvent(event);
 }
 
@@ -1868,7 +1849,7 @@ void mudlet::readEarlySettings(const QSettings& settings)
         QFile file_use_smallscreen(getMudletPath(mainDataItemPath, QStringLiteral("mudlet_option_use_smallscreen")));
         mEnableFullScreenMode = file_use_smallscreen.exists();
     }
-
+    mDarkTheme = settings.value(QStringLiteral("darkTheme"), QVariant(false)).toBool();
     mInterfaceLanguage = settings.value("interfaceLanguage", autodetectPreferredLanguage()).toString();
     mUserLocale = QLocale(mInterfaceLanguage);
     if (mUserLocale == QLocale::c()) {
@@ -1964,9 +1945,8 @@ void mudlet::setMenuBarVisibility(const controlsVisibility state)
 // This only adjusts the visibility as appropriate
 void mudlet::adjustMenuBarVisibility()
 {
-    // Are there any profiles loaded?
-    if ((mHostManager.getHostCount() && mMenuBarVisibility & visibleAlways)
-            || (mMenuBarVisibility & visibleMaskNormally)) {
+    const int hostCount = mHostManager.getHostCount();
+    if ((hostCount < 1 && (mMenuBarVisibility & visibleAlways)) || (hostCount >= 1 && (mMenuBarVisibility & visibleMaskNormally))) {
         menuBar()->show();
     } else {
         menuBar()->hide();
@@ -1989,8 +1969,8 @@ void mudlet::slot_handleToolbarVisibilityChanged(bool isVisible)
 {
     if (!isVisible && mMenuBarVisibility == visibleNever) {
         // Only need to worry about it DIS-appearing if the menu bar is not showing
-        int hostCount = mHostManager.getHostCount();
-        if ((hostCount < 2 && (mToolbarVisibility & visibleAlways)) || (hostCount >= 2 && (mToolbarVisibility & visibleMaskNormally))) {
+        const int hostCount = mHostManager.getHostCount();
+        if ((hostCount < 1 && (mToolbarVisibility & visibleAlways)) || (hostCount >= 1 && (mToolbarVisibility & visibleMaskNormally))) {
             mpMainToolBar->show();
         }
     }
@@ -1998,9 +1978,8 @@ void mudlet::slot_handleToolbarVisibilityChanged(bool isVisible)
 
 void mudlet::adjustToolBarVisibility()
 {
-    // Are there any profiles loaded?
-    if ((mHostManager.getHostCount() && mToolbarVisibility & visibleAlways)
-            || (mToolbarVisibility & visibleMaskNormally)) {
+    const int hostCount = mHostManager.getHostCount();
+    if ((hostCount < 1 && (mToolbarVisibility & visibleAlways)) || (hostCount >= 1 && (mToolbarVisibility & visibleMaskNormally))) {
         mpMainToolBar->show();
     } else {
         mpMainToolBar->hide();
@@ -2041,6 +2020,7 @@ void mudlet::writeSettings()
     settings.setValue("enableFullScreenMode", mEnableFullScreenMode);
     settings.setValue("copyAsImageTimeout", mCopyAsImageTimeout);
     settings.setValue("interfaceLanguage", mInterfaceLanguage);
+    settings.setValue("darkTheme", mDarkTheme);
 }
 
 void mudlet::slot_show_connection_dialog()
@@ -2217,30 +2197,83 @@ void mudlet::show_options_dialog(const QString& tab)
 
 void mudlet::slot_update_shortcuts()
 {
-    if (MenuBar->isVisible()) {
-        triggersShortcut->setEnabled(false);
-        showMapShortcut->setEnabled(false);
-        inputLineShortcut->setEnabled(false);
-        optionsShortcut->setEnabled(false);
-        notepadShortcut->setEnabled(false);
-        packagesShortcut->setEnabled(false);
-        modulesShortcut->setEnabled(false);
-        multiViewShortcut->setEnabled(false);
-        connectShortcut->setEnabled(false);
-        disconnectShortcut->setEnabled(false);
-        reconnectShortcut->setEnabled(false);
+    if (mpMainToolBar->isVisible()) {
+        triggersShortcut = new QShortcut(triggersKeySequence, this);
+        connect(triggersShortcut.data(), &QShortcut::activated, this, &mudlet::show_editor_dialog);
+        dactionScriptEditor->setShortcut(QKeySequence());
+
+        showMapShortcut = new QShortcut(showMapKeySequence, this);
+        connect(showMapShortcut.data(), &QShortcut::activated, this, &mudlet::slot_mapper);
+        dactionShowMap->setShortcut(QKeySequence());
+
+        inputLineShortcut = new QShortcut(inputLineKeySequence, this);
+        connect(inputLineShortcut.data(), &QShortcut::activated, this, &mudlet::slot_toggle_compact_input_line);
+        dactionInputLine->setShortcut(QKeySequence());
+
+        optionsShortcut = new QShortcut(optionsKeySequence, this);
+        connect(optionsShortcut.data(), &QShortcut::activated, this, &mudlet::slot_show_options_dialog);
+        dactionOptions->setShortcut(QKeySequence());
+
+        notepadShortcut = new QShortcut(notepadKeySequence, this);
+        connect(notepadShortcut.data(), &QShortcut::activated, this, &mudlet::slot_notes);
+        dactionNotepad->setShortcut(QKeySequence());
+
+        packagesShortcut = new QShortcut(packagesKeySequence, this);
+        connect(packagesShortcut.data(), &QShortcut::activated, this, &mudlet::slot_package_manager);
+        dactionPackageManager->setShortcut(QKeySequence());
+
+        modulesShortcut = new QShortcut(packagesKeySequence, this);
+        connect(modulesShortcut.data(), &QShortcut::activated, this, &mudlet::slot_module_manager);
+        dactionModuleManager->setShortcut(QKeySequence());
+
+        multiViewShortcut = new QShortcut(multiViewKeySequence, this);
+        connect(multiViewShortcut.data(), &QShortcut::activated, this, &mudlet::slot_toggle_multi_view);
+        dactionMultiView->setShortcut(QKeySequence());
+
+        connectShortcut = new QShortcut(connectKeySequence, this);
+        connect(connectShortcut.data(), &QShortcut::activated, this, &mudlet::slot_show_connection_dialog);
+        dactionConnect->setShortcut(QKeySequence());
+
+        disconnectShortcut = new QShortcut(disconnectKeySequence, this);
+        connect(disconnectShortcut.data(), &QShortcut::activated, this, &mudlet::slot_disconnect);
+        dactionDisconnect->setShortcut(QKeySequence());
+
+        reconnectShortcut = new QShortcut(reconnectKeySequence, this);
+        connect(reconnectShortcut.data(), &QShortcut::activated, this, &mudlet::slot_reconnect);
+        dactionReconnect->setShortcut(QKeySequence());
     } else {
-        triggersShortcut->setEnabled(true);
-        showMapShortcut->setEnabled(true);
-        inputLineShortcut->setEnabled(true);
-        optionsShortcut->setEnabled(true);
-        notepadShortcut->setEnabled(true);
-        packagesShortcut->setEnabled(true);
-        modulesShortcut->setEnabled(true);
-        multiViewShortcut->setEnabled(true);
-        connectShortcut->setEnabled(true);
-        disconnectShortcut->setEnabled(true);
-        reconnectShortcut->setEnabled(true);
+        triggersShortcut.clear();
+        dactionScriptEditor->setShortcut(triggersKeySequence);
+
+        showMapShortcut.clear();
+        dactionShowMap->setShortcut(showMapKeySequence);
+
+        inputLineShortcut.clear();
+        dactionInputLine->setShortcut(inputLineKeySequence);
+
+        optionsShortcut.clear();
+        dactionOptions->setShortcut(optionsKeySequence);
+
+        notepadShortcut.clear();
+        dactionNotepad->setShortcut(notepadKeySequence);
+
+        packagesShortcut.clear();
+        dactionPackageManager->setShortcut(packagesKeySequence);
+
+        modulesShortcut.clear();
+        dactionModuleManager->setShortcut(modulesKeySequence);
+
+        multiViewShortcut.clear();
+        dactionMultiView->setShortcut(multiViewKeySequence);
+
+        connectShortcut.clear();
+        dactionConnect->setShortcut(connectKeySequence);
+
+        disconnectShortcut.clear();
+        dactionDisconnect->setShortcut(disconnectKeySequence);
+
+        reconnectShortcut.clear();
+        dactionReconnect->setShortcut(reconnectKeySequence);
     }
 }
 
@@ -2554,11 +2587,11 @@ void mudlet::doAutoLogin(const QString& profile_name)
     if (entries.isEmpty()) {
         preInstallPackages = true;
 
-        const auto it = mudlet::scmDefaultGames.constFind(profile_name);
-        if (it != mudlet::scmDefaultGames.cend()) {
-            pHost->setUrl(it->hostUrl);
-            pHost->setPort(it->port);
-            pHost->mSslTsl = it->tlsEnabled;
+        const auto it = mudlet::scmDefaultGames.find(profile_name);
+        if (it != mudlet::scmDefaultGames.end()) {
+            pHost->setUrl(it.value().hostUrl);
+            pHost->setPort(it.value().port);
+            pHost->mSslTsl = it.value().tlsEnabled;
         }
     } else {
         QFile file(QStringLiteral("%1/%2").arg(folder, entries.at(0)));
@@ -3768,7 +3801,6 @@ void mudlet::setShowMapAuditErrors(const bool state)
 
         emit signal_showMapAuditErrorsChanged(state);
     }
-
 }
 
 void mudlet::setShowIconsOnMenu(const Qt::CheckState state)
@@ -3789,6 +3821,20 @@ void mudlet::setShowIconsOnMenu(const Qt::CheckState state)
 
         emit signal_showIconsOnMenusChanged(state);
     }
+}
+void mudlet::setDarkTheme(const bool& state)
+{
+    if (state) {
+        // NOLINTNEXTLINE(clang-analyzer-cplusplus.NewDeleteLeaks)
+        qApp->setStyle(new DarkTheme);
+        getHostManager().changeAllHostColour(getActiveHost());
+    } else {
+        // NOLINTNEXTLINE(clang-analyzer-cplusplus.NewDeleteLeaks)
+        qApp->setStyle(new AltFocusMenuBarDisable(mDefaultStyle));
+        getHostManager().changeAllHostColour(getActiveHost());
+    }
+    mDarkTheme = state;
+    emit signal_enableDarkThemeChanged(state);
 }
 
 void mudlet::setInterfaceLanguage(const QString& languageCode)

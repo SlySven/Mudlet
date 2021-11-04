@@ -252,7 +252,7 @@ Host::Host(int port, const QString& hostname, const QString& login, const QStrin
 , mScreenWidth(90)
 , mTimeout(60)
 , mUSE_FORCE_LF_AFTER_PROMPT(false)
-, mUSE_IRE_DRIVER_BUGFIX(true)
+, mUSE_IRE_DRIVER_BUGFIX(false)
 , mUSE_UNIX_EOL(false)
 , mWrapAt(100)
 , mWrapIndentCount(0)
@@ -610,6 +610,16 @@ void Host::updateModuleZips() const
 
 void Host::reloadModule(const QString& reloadModuleName)
 {
+    //Wait till profile is finished saving
+    if (currentlySavingProfile()) {
+        //create a dummy object to singleshot connect (disconnect/delete after execution)
+        QObject *obj = new QObject(this);
+        connect(this, &Host::profileSaveFinished, obj, [=](){
+            reloadModule(reloadModuleName);
+            obj->deleteLater();
+        });
+        return;
+    }
     QMap<QString, QStringList> installedModules = mInstalledModules;
     QMapIterator<QString, QStringList> moduleIterator(installedModules);
     while (moduleIterator.hasNext()) {
@@ -1598,7 +1608,7 @@ bool Host::installPackage(const QString& fileName, int module)
     // As the pointed to dialog is only used now WITHIN this method and this
     // method can be re-entered, it is best to use a local rather than a class
     // pointer just in case we accidentally reenter this method in the future.
-    QDialog* pUnzipDialog = Q_NULLPTR;
+    QDialog* pUnzipDialog = nullptr;
 
     //     Module notes:
     //     For the module install, a module flag of 0 is a package,
@@ -1677,7 +1687,7 @@ bool Host::installPackage(const QString& fileName, int module)
 
         auto successful = mudlet::unzip(fileName, _dest, _tmpDir);
         pUnzipDialog->deleteLater();
-        pUnzipDialog = Q_NULLPTR;
+        pUnzipDialog = nullptr;
         if (!successful) {
             return false;
         }
@@ -1820,7 +1830,7 @@ bool Host::removeDir(const QString& dirName, const QString& originalPath)
     bool result = true;
     QDir dir(dirName);
     if (dir.exists(dirName)) {
-        Q_FOREACH (QFileInfo info, dir.entryInfoList(QDir::NoDotAndDotDot | QDir::System | QDir::Hidden | QDir::AllDirs | QDir::Files, QDir::DirsFirst)) {
+        for (QFileInfo &info : dir.entryInfoList(QDir::NoDotAndDotDot | QDir::System | QDir::Hidden | QDir::AllDirs | QDir::Files, QDir::DirsFirst)) {
             // prevent recursion outside of the original branch
             if (info.isDir() && info.absoluteFilePath().startsWith(originalPath)) {
                 result = removeDir(info.absoluteFilePath(), originalPath);
@@ -1917,6 +1927,7 @@ bool Host::uninstallPackage(const QString& packageName, int module)
     mActionUnit.uninstall(packageName);
     mScriptUnit.uninstall(packageName);
     mKeyUnit.uninstall(packageName);
+    mudlet::self()->mFontManager.unloadFonts(packageName);
     if (module) {
         //if module == 2, this is a temporary uninstall for reloading so we exit here
         QStringList entry = mInstalledModules[packageName];
@@ -2115,7 +2126,7 @@ void Host::installPackageFonts(const QString &packageName)
         if (filePath.endsWith(QLatin1String(".otf"), Qt::CaseInsensitive) || filePath.endsWith(QLatin1String(".ttf"), Qt::CaseInsensitive) ||
             filePath.endsWith(QLatin1String(".ttc"), Qt::CaseInsensitive) || filePath.endsWith(QLatin1String(".otc"), Qt::CaseInsensitive)) {
 
-            mudlet::self()->mFontManager.loadFont(filePath);
+            mudlet::self()->mFontManager.loadFont(filePath, packageName);
         }
     }
 }
@@ -3723,4 +3734,16 @@ bool Host::commitLayoutUpdates(bool flush)
     }
     mToolbarLayoutChanges.clear();
     return updated;
+}
+
+void Host::setupIreDriverBugfix()
+{
+    // IRE games suffer from unnecessary linebreaks across split packets
+    // but other games implementing GA don't. Thus, only enable the workaround
+    // for the former only
+
+    QStringList ireGameUrls{"achaea.com", "lusternia.com", "imperian.com", "aetolia.com", "starmourn.com"};
+    if (ireGameUrls.contains(getUrl(), Qt::CaseInsensitive)) {
+        set_USE_IRE_DRIVER_BUGFIX(true);
+    }
 }

@@ -285,6 +285,7 @@ bool TCommandLine::event(QEvent* event)
             if ((ke->modifiers() & allModifiers) == Qt::ShiftModifier) {
                 textCursor().insertBlock();
                 ke->accept();
+                adjustHeight();
                 return true;
 
             }
@@ -977,7 +978,7 @@ void TCommandLine::handleTabCompletion(bool direction)
             }
             QString proposal = filterList[mTabCompletionCount];
             QString userWords = mTabCompletionTyped.left(typePosition);
-            setPlainText(QString(userWords + proposal).trimmed());
+            setPlainText(QString(userWords + proposal));
             moveCursor(QTextCursor::End, QTextCursor::MoveAnchor);
             mTabCompletionOld = toPlainText();
         }
@@ -1046,11 +1047,11 @@ void TCommandLine::historyMove(MoveDirection direction)
         } else {
             moveCursor(QTextCursor::End);
         }
-        adjustHeight();
     } else {
         mAutoCompletionCount += shift;
         handleAutoCompletion();
     }
+    adjustHeight();
 }
 
 void TCommandLine::slot_clearSelection(bool yes)

@@ -878,9 +878,9 @@ void dlgConnectionProfiles::slot_item_clicked(QListWidgetItem* pItem)
     QString host_url = readProfileData(profile_name, QStringLiteral("url"));
     if (host_url.isEmpty()) {
         // Host to connect to, see below for port
-        const auto it = mudlet::scmDefaultGames.constFind(profile_name);
-        if (it != mudlet::scmDefaultGames.cend()) {
-            host_url = it->hostUrl;
+        const auto it = mudlet::scmDefaultGames.find(profile_name);
+        if (it != mudlet::scmDefaultGames.end()) {
+            host_url = it.value().hostUrl;
         }
     }
     host_name_entry->setText(host_url);
@@ -894,10 +894,10 @@ void dlgConnectionProfiles::slot_item_clicked(QListWidgetItem* pItem)
     }
 
     if (host_port.isEmpty()) {
-        const auto it = mudlet::scmDefaultGames.constFind(profile_name);
-        if (it != mudlet::scmDefaultGames.cend()) {
-            host_port = QString::number(it->port);
-            port_ssl_tsl->setChecked(it->tlsEnabled);
+        const auto it = mudlet::scmDefaultGames.find(profile_name);
+        if (it != mudlet::scmDefaultGames.end()) {
+            host_port = QString::number(it.value().port);
+            port_ssl_tsl->setChecked(it.value().tlsEnabled);
         }
     }
 
@@ -953,9 +953,9 @@ void dlgConnectionProfiles::slot_item_clicked(QListWidgetItem* pItem)
 
     val = readProfileData(profile_name, QStringLiteral("website"));
     if (val.isEmpty()) {
-        const auto it = mudlet::scmDefaultGames.constFind(profile_name);
-        if (it != mudlet::scmDefaultGames.cend()) {
-            val = it->websiteInfo;
+        const auto it = mudlet::scmDefaultGames.find(profile_name);
+        if (it != mudlet::scmDefaultGames.end()) {
+            val = it.value().websiteInfo;
         }
     }
     website_entry->setText(val);
@@ -1609,10 +1609,11 @@ void dlgConnectionProfiles::loadProfile(bool alsoConnect)
     QDir dir(folder);
     dir.setSorting(QDir::Time);
     QStringList entries = dir.entryList(QDir::Files, QDir::Time);
-    bool preInstallPackages = false;
+    // loading this profile for the first time
+    bool firstTimeLoad = false;
     pHost->hideMudletsVariables();
     if (entries.isEmpty()) {
-        preInstallPackages = true;
+        firstTimeLoad = true;
     } else {
         QFile file(QStringLiteral("%1%2").arg(folder, profile_history->itemData(profile_history->currentIndex()).toString()));
         file.open(QFile::ReadOnly | QFile::Text);
@@ -1623,7 +1624,7 @@ void dlgConnectionProfiles::loadProfile(bool alsoConnect)
 
         // Is this a new profile created through 'copy profile (settings only)'? install default packages into it
         if (entries.size() == 1 && entries.first() == QLatin1String("Copied profile (settings only).xml")) {
-            preInstallPackages = true;
+            firstTimeLoad = true;
         }
     }
 
@@ -1668,8 +1669,9 @@ void dlgConnectionProfiles::loadProfile(bool alsoConnect)
         mudlet::self()->mDiscord.setApplicationID(pHost, mDiscordApplicationId);
     }
 
-    if (preInstallPackages) {
+    if (firstTimeLoad) {
         mudlet::self()->setupPreInstallPackages(pHost->getUrl().toLower());
+        pHost->setupIreDriverBugfix();
     }
 
     emit mudlet::self()->signal_hostCreated(pHost, hostManager.getHostCount());

@@ -110,7 +110,9 @@ public:
     bool restore(QString location, bool downloadIfNotFound = true);
     bool retrieveMapFileStats(QString, QString*, int*, int*, int*, int*);
     void initGraph();
-    void connectExitStub(int roomId, int dirType);
+    QString connectExitStubByDirection(const int fromRoomId, const int dirType);
+    QString connectExitStubByToId(const int fromRoomId, const int toRoomId);
+    QString connectExitStubByDirectionAndToId(const int fromRoomId, const int dirType, const int toRoomId);
     void postMessage(QString text);
 
     // Used by the 2D mapper to send view center coordinates to 3D one
@@ -132,10 +134,10 @@ public:
     void downloadMap(const QString& remoteUrl = QString(), const QString& localFileName = QString());
 
     // like 'downloadMap' but for local files:
-    bool importMap(QFile&, QString* errMsg = Q_NULLPTR);
+    bool importMap(QFile&, QString* errMsg = nullptr);
 
     // Used at end of downloadMap(...) OR as part of importMap(...)
-    bool readXmlMapFile(QFile&, QString* errMsg = Q_NULLPTR);
+    bool readXmlMapFile(QFile&, QString* errMsg = nullptr);
 
     // Use progress dialog for post-download operations.
     void reportStringToProgressDialog(QString);

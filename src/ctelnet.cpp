@@ -152,7 +152,7 @@ cTelnet::cTelnet(Host* pH, const QString& profileName)
     // initialize telnet session
     reset();
 
-    mpPostingTimer->setInterval(300); //FIXME
+    mpPostingTimer->setInterval(mTimeOut);
     connect(mpPostingTimer, &QTimer::timeout, this, &cTelnet::slot_timerPosting);
 
     mTimerLogin = new QTimer(this);
@@ -1970,14 +1970,8 @@ void cTelnet::setATCPVariables(const QByteArray& msg)
 
 void cTelnet::setGMCPVariables(const QByteArray& msg)
 {
-    QString transcodedMsg;
-    if (mpOutOfBandDataIncomingCodec) {
-        // Message is encoded
-        transcodedMsg = mpOutOfBandDataIncomingCodec->toUnicode(msg);
-    } else {
-        // Message is in ASCII (though this can handle Utf-8):
-        transcodedMsg = msg;
-    }
+    // JSON (and thus the GMCP data) is always utf8
+    QString transcodedMsg(msg);
 
     QString packageMessage;
     QString data;
@@ -2375,7 +2369,7 @@ void cTelnet::postMessage(QString msg)
             if (prefix.contains(tr("ERROR", "Keep the capisalisation, the translated text at 7 letters max so it aligns nicely")) || prefix.contains(QLatin1String("ERROR"))) {
                 mpHost->mpConsole->print(prefix, Qt::red, mpHost->mBgColor);                                  // Bright Red
                 mpHost->mpConsole->print(firstLineTail.append('\n'), QColor(255, 255, 50), mpHost->mBgColor); // Bright Yellow
-                for (quint8 _i = 0; _i < body.size(); ++_i) {
+                for (int _i = 0; _i < body.size(); ++_i) {
                     QString temp = body.at(_i);
                     temp.replace('\t', QLatin1String("        "));
                     // Fix for lua using tabs for indentation which was messing up justification:
@@ -2387,7 +2381,7 @@ void cTelnet::postMessage(QString msg)
             } else if (prefix.contains(tr("LUA", "Keep the capisalisation, the translated text at 7 letters max so it aligns nicely")) || prefix.contains(QLatin1String("LUA"))) {
                 mpHost->mpConsole->print(prefix, QColor(80, 160, 255), mpHost->mBgColor);                    // Light blue
                 mpHost->mpConsole->print(firstLineTail.append('\n'), QColor(50, 200, 50), mpHost->mBgColor); // Light green
-                for (quint8 _i = 0; _i < body.size(); ++_i) {
+                for (int _i = 0; _i < body.size(); ++_i) {
                     QString temp = body.at(_i);
                     temp.replace('\t', QLatin1String("        "));
                     body[_i] = temp.rightJustified(temp.length() + prefixLength);
@@ -2398,7 +2392,7 @@ void cTelnet::postMessage(QString msg)
             } else if (prefix.contains(tr("WARN", "Keep the capisalisation, the translated text at 7 letters max so it aligns nicely")) || prefix.contains(QLatin1String("WARN"))) {
                 mpHost->mpConsole->print(prefix, QColor(0, 150, 190), mpHost->mBgColor);                     // Cyan
                 mpHost->mpConsole->print(firstLineTail.append('\n'), QColor(190, 150, 0), mpHost->mBgColor); // Orange
-                for (quint8 _i = 0; _i < body.size(); ++_i) {
+                for (int _i = 0; _i < body.size(); ++_i) {
                     QString temp = body.at(_i);
                     temp.replace('\t', QLatin1String("        "));
                     body[_i] = temp.rightJustified(temp.length() + prefixLength);
@@ -2409,7 +2403,7 @@ void cTelnet::postMessage(QString msg)
             } else if (prefix.contains(tr("ALERT", "Keep the capisalisation, the translated text at 7 letters max so it aligns nicely")) || prefix.contains(QLatin1String("ALERT"))) {
                 mpHost->mpConsole->print(prefix, QColor(190, 100, 50), mpHost->mBgColor);                     // Orange-ish
                 mpHost->mpConsole->print(firstLineTail.append('\n'), QColor(190, 190, 50), mpHost->mBgColor); // Yellow
-                for (quint8 _i = 0; _i < body.size(); ++_i) {
+                for (int _i = 0; _i < body.size(); ++_i) {
                     QString temp = body.at(_i);
                     temp.replace('\t', QLatin1String("        "));
                     body[_i] = temp.rightJustified(temp.length() + prefixLength);
@@ -2420,7 +2414,7 @@ void cTelnet::postMessage(QString msg)
             } else if (prefix.contains(tr("INFO", "Keep the capisalisation, the translated text at 7 letters max so it aligns nicely")) || prefix.contains(QLatin1String("INFO"))) {
                 mpHost->mpConsole->print(prefix, QColor(0, 150, 190), mpHost->mBgColor);                   // Cyan
                 mpHost->mpConsole->print(firstLineTail.append('\n'), QColor(0, 160, 0), mpHost->mBgColor); // Light Green
-                for (quint8 _i = 0; _i < body.size(); ++_i) {
+                for (int _i = 0; _i < body.size(); ++_i) {
                     QString temp = body.at(_i);
                     temp.replace('\t', QLatin1String("        "));
                     body[_i] = temp.rightJustified(temp.length() + prefixLength);
@@ -2431,7 +2425,7 @@ void cTelnet::postMessage(QString msg)
             } else if (prefix.contains(tr("OK", "Keep the capisalisation, the translated text at 7 letters max so it aligns nicely")) || prefix.contains(QLatin1String("OK"))) {
                 mpHost->mpConsole->print(prefix, QColor(0, 160, 0), mpHost->mBgColor);                        // Light Green
                 mpHost->mpConsole->print(firstLineTail.append('\n'), QColor(190, 100, 50), mpHost->mBgColor); // Orange-ish
-                for (quint8 _i = 0; _i < body.size(); ++_i) {
+                for (int _i = 0; _i < body.size(); ++_i) {
                     QString temp = body.at(_i);
                     temp.replace('\t', QLatin1String("        "));
                     body[_i] = temp.rightJustified(temp.length() + prefixLength);
@@ -2442,7 +2436,7 @@ void cTelnet::postMessage(QString msg)
             } else {                                                                                        // Unrecognised but still in a "[ something ] -  message..." format
                 mpHost->mpConsole->print(prefix, QColor(190, 50, 50), mpHost->mBgColor);                    // Foreground red, background bright grey
                 mpHost->mpConsole->print(firstLineTail.append('\n'), QColor(50, 50, 50), mpHost->mBgColor); //Foreground dark grey, background bright grey
-                for (quint8 _i = 0; _i < body.size(); ++_i) {
+                for (int _i = 0; _i < body.size(); ++_i) {
                     QString temp = body.at(_i);
                     temp.replace('\t', QLatin1String("        "));
                     body[_i] = temp.rightJustified(temp.length() + prefixLength);
@@ -2464,6 +2458,9 @@ void cTelnet::postMessage(QString msg)
 void cTelnet::gotPrompt(std::string& mud_data)
 {
     mpPostingTimer->stop();
+    if (mpPostingTimer->interval() != mTimeOut) {
+        mpPostingTimer->setInterval(mTimeOut);
+    }
     mMudData += mud_data;
 
     if (mUSE_IRE_DRIVER_BUGFIX && mGA_Driver) {
@@ -2513,6 +2510,9 @@ void cTelnet::gotRest(std::string& mud_data)
         if (i != std::string::npos) {
             mMudData += mud_data.substr(0, i + 1);
             postData();
+            if (!mIsTimerPosting && (mpPostingTimer->interval() != mTimeOut)) {
+                mpPostingTimer->setInterval(mTimeOut);
+            }
             mpPostingTimer->start();
             mIsTimerPosting = true;
             if (i + 1 < mud_data.size()) {
@@ -2523,6 +2523,9 @@ void cTelnet::gotRest(std::string& mud_data)
         } else {
             mMudData += mud_data;
             if (!mIsTimerPosting) {
+                if (mpPostingTimer->interval() != mTimeOut) {
+                    mpPostingTimer->setInterval(mTimeOut);
+                }
                 mpPostingTimer->start();
                 mIsTimerPosting = true;
             }
@@ -2908,7 +2911,8 @@ void cTelnet::processSocketData(char* in_buffer, int amount)
                         processTelnetCommand(command);
                         if (!mIncompleteSB) {
                             mIncompleteSB = true;
-                            qWarning(R"("TELNET: the server did not properly complete a subnegotiation (code %02x).\nSome data loss is likely - please mention this problem to the game admins.)",command[2]);
+                            qWarning(R"("TELNET: the server did not properly complete a subnegotiation (code %02x).
+Some data loss is likely - please mention this problem to the game admins.)",command[2]);
                         }
 
 
@@ -3098,5 +3102,12 @@ std::string cTelnet::encodeAndCookBytes(const std::string& data)
         // std::string::c_str() converts the std::string into a char array WITH
         // a garenteed terminating null byte.
         return mudlet::replaceString(data, "\xff", "\xff\xff");
+    }
+}
+
+void cTelnet::setPostingTimeout(const int timeout)
+{
+    if (mTimeOut != timeout) {
+        mTimeOut = timeout;
     }
 }
