@@ -13727,7 +13727,7 @@ void TLuaInterpreter::parseMSSP(const QString& string_data)
                 host.mMSSPHostName = msspVAL;
             } else if (msspVAR == "TLS" || msspVAR == "SSL") {
                 // In certain MSSP fields "-1" and "1" denote not supported/supported indicators,
-                // however the port is the standard value here. Ignore those values here. 
+                // however the port is the standard value here. Ignore those values here.
                 host.mMSSPTlsPort = (msspVAL != "-1" && msspVAL != "1") ? msspVAL.toInt() : 0;
             }
         }
@@ -17153,10 +17153,12 @@ int TLuaInterpreter::showNotification(lua_State* L)
     if (n >= 2) {
         text = getVerifiedString(L, __func__, 2, "message");
     }
-    int notificationExpirationTime = 1000;
+    auto notificationExpirationTime = 1s;
     bool timeoutGiven = false;
     if (n >= 3) {
-        notificationExpirationTime = qMax(qRound(getVerifiedDouble(L, __func__, 3, "expiration time in seconds") * 1000), 1000);
+        auto expirationTimeInSeconds = getVerifiedDouble(L, __func__, 3, "expiration time in seconds");
+        notificationExpirationTime = std::max(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::duration<double>(expirationTimeInSeconds)), 1s);
+    }
         timeoutGiven = true;
     }
 
