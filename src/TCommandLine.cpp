@@ -1161,8 +1161,21 @@ void TCommandLine::spellCheckWord(QTextCursor& c)
     }
 
     QTextCharFormat f;
+    // This flag is needed to handle the selection correctly
     mSpellChecking = true;
     c.select(QTextCursor::WordUnderCursor);
+    if (bool IsWordLongEnoughForSpellCheck = (TBuffer::lengthInGraphemes(c.selectedText()) >= mpHost->mSpellCheckMinGraphemeLength); !IsWordLongEnoughForSpellCheck) {
+        // We are bailing out because the word is not now long enough, just
+        // in case the user has increased the minimum length since the last
+        // time we did this word we had better undo any prior underline, and we
+        // need to also reset the flag:
+        f.setFontUnderline(false);
+        c.setCharFormat(f);
+        setTextCursor(c);
+        mSpellChecking = false;
+        return;
+    }
+
     QByteArray encodedText = mpHost->mpConsole->getHunspellCodec_system()->fromUnicode(c.selectedText());
     if (!Hunspell_spell(systemDictionaryHandle, encodedText.constData())) {
         // Word is not in selected system dictionary
@@ -1230,7 +1243,6 @@ void TCommandLine::recheckWholeLine()
     // Save the current position
     QTextCursor oldCursor = textCursor();
 
-    QTextCharFormat f;
     QTextCursor c = textCursor();
     // Move Cursor AND selection anchor to start:
     c.movePosition(QTextCursor::Start);
