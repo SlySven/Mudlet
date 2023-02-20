@@ -1,7 +1,7 @@
 /***************************************************************************
  *   Copyright (C) 2008-2012 by Heiko Koehn - KoehnHeiko@googlemail.com    *
  *   Copyright (C) 2014 by Ahmed Charles - acharles@outlook.com            *
- *   Copyright (C) 2018-2020, 2022 by Stephen Lyons                        *
+ *   Copyright (C) 2018-2020, 2022-2023 by Stephen Lyons                   *
  *                                               - slysven@virginmedia.com *
  *   Copyright (C) 2023 by Lecker Kebap - Leris@mudlet.org                 *
  *                                                                         *
@@ -663,12 +663,13 @@ void TCommandLine::slot_popupMenu()
     spellCheck();
 }
 
-void TCommandLine::fillSpellCheckList(QMouseEvent* event, QMenu* popup) {
+void TCommandLine::fillSpellCheckList(QMouseEvent* event, QMenu* popup)
+{
     QTextCursor c = cursorForPosition(event->pos());
     c.select(QTextCursor::WordUnderCursor);
     mSpellCheckedWord = c.selectedText();
 
-    if (bool IsWordLongEnoughForSpellCheck = mSpellCheckedWord.size() > 2; !IsWordLongEnoughForSpellCheck) {
+    if (bool IsWordLongEnoughForSpellCheck = (TBuffer::lengthInGraphemes(mSpellCheckedWord) >= mpHost->mSpellCheckMinGraphemeLength); !IsWordLongEnoughForSpellCheck) {
         return;
     }
 

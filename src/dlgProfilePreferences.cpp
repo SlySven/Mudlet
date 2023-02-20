@@ -408,6 +408,8 @@ void dlgProfilePreferences::disableHostDetails()
     groupBox_input->setEnabled(false);
 
     groupBox_spellCheck->setEnabled(false);
+    // This is the default value used for Host::mSpellCheckMinGraphemeLength:
+    spinBox_minimumLengthToSpellCheck->setValue(3);
 
     // ===== tab_display =====
     groupBox_font->setEnabled(false);
@@ -668,6 +670,7 @@ void dlgProfilePreferences::initWithHost(Host* pHost)
         checkBox_spellCheck->setText(tr("System dictionaries:", "On *nix systems where we find the system ones we use them."));
     }
 
+    spinBox_minimumLengthToSpellCheck->setValue(pHost->mSpellCheckMinGraphemeLength);
     QDir dir(path);
     QStringList entries = dir.entryList(QDir::Files, QDir::Time);
     // QRegularExpression rex(qsl(R"(\.dic$)"));
@@ -2628,6 +2631,7 @@ void dlgProfilePreferences::slot_saveAndClose()
         } else {
             pHost->setUserDictionaryOptions(true, false);
         }
+        pHost->mSpellCheckMinGraphemeLength = spinBox_minimumLengthToSpellCheck->value();
         pHost->mWrapAt = wrap_at_spinBox->value();
         pHost->updateDisplayDimensions();
         pHost->mWrapIndentCount = indent_wrapped_spinBox->value();

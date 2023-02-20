@@ -1,7 +1,7 @@
 /***************************************************************************
  *   Copyright (C) 2008-2013 by Heiko Koehn - KoehnHeiko@googlemail.com    *
  *   Copyright (C) 2014 by Ahmed Charles - acharles@outlook.com            *
- *   Copyright (C) 2016-2022 by Stephen Lyons - slysven@virginmedia.com    *
+ *   Copyright (C) 2016-2023 by Stephen Lyons - slysven@virginmedia.com    *
  *   Copyright (C) 2016-2017 by Ian Adkins - ieadkins@gmail.com            *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -941,6 +941,15 @@ void XMLimport::readHost(Host* pHost)
     } else {
         // The default (and for map/profile files from before 4.15.0):
         pHost->setLargeAreaExitArrows(false);
+    }
+
+    if (attributes().hasAttribute(QLatin1String("SpellCheckMinGraphemeLength"))) {
+        // These limits are also hard coded into the QSpinBox used to adjust
+        // this setting in the preferences:
+        pHost->mSpellCheckMinGraphemeLength = qBound(1, attributes().value(qsl("SpellCheckMinGraphemeLength")).toInt(), 9);
+    } else {
+        // The default value, but not present up to around Mudlet 4.17.0:
+        pHost->mSpellCheckMinGraphemeLength = 3;
     }
 
     if (attributes().value(qsl("mShowInfo")) == qsl("no")) {

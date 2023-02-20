@@ -607,8 +607,8 @@
          <property name="title">
           <string>Spell checking</string>
          </property>
-         <layout class="QVBoxLayout" name="verticalLayout_groupBox_spellCheck">
-          <item>
+         <layout class="QGridLayout" name="gridLayout_groupBox_spellCheck">
+          <item row="0" column="0">
            <widget class="QCheckBox" name="checkBox_spellCheck">
             <property name="toolTip">
              <string>&lt;p&gt;This option controls spell-checking on the command line in the main console for this profile.&lt;/p&gt;</string>
@@ -618,7 +618,7 @@
             </property>
            </widget>
           </item>
-          <item>
+          <item row="1" column="0" colspan="2">
            <widget class="QListWidget" name="dictList">
             <property name="toolTip">
              <string>&lt;p&gt;Select one dictionary which will be available on the command line and in the lua sub-system.&lt;/p&gt;</string>
@@ -646,7 +646,7 @@
             </property>
            </widget>
           </item>
-          <item>
+          <item row="2" column="0" colspan="2">
            <widget class="QGroupBox" name="groupBox_userDictionary">
             <property name="title">
              <string>User dictionary:</string>
@@ -673,6 +673,29 @@
               </widget>
              </item>
             </layout>
+           </widget>
+          </item>
+          <item row="3" column="0" alignment="Qt::AlignRight">
+           <widget class="QLabel" name="label_minimumLengthToSpellCheck">
+            <property name="text">
+             <string>Minimum length of word to spell-check:</string>
+            </property>
+            <property name="buddy">
+             <cstring>spinBox_minimumLengthToSpellCheck</cstring>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="1" alignment="Qt::AlignLeft">
+           <widget class="QSpinBox" name="spinBox_minimumLengthToSpellCheck">
+            <property name="minimum">
+             <number>1</number>
+            </property>
+            <property name="maximum">
+             <number>9</number>
+            </property>
+            <property name="value">
+             <number>3</number>
+            </property>
            </widget>
           </item>
          </layout>
@@ -3376,11 +3399,11 @@ you can use it but there could be issues with aligning columns of text</string>
        </item>
        <item>
         <widget class="QCheckBox" name="checkBox_askTlsAvailable">
+         <property name="toolTip">
+          <string>&lt;p&gt;To encourage enhanced data transfer protection and privacy, be prompted for a choice to switch to an encrypted port when advertised via Mud Server Status Protocol (MSSP).&lt;/p&gt;</string>
+         </property>
          <property name="text">
           <string>Allow secure connection reminder</string>
-         </property>
-         <property name="toolTip">
-           <string>&lt;p&gt;To encourage enhanced data transfer protection and privacy, be prompted for a choice to switch to an encrypted port when advertised via Mud Server Status Protocol (MSSP).&lt;/p&gt;</string>
          </property>
          <property name="checkable">
           <bool>true</bool>
@@ -4063,6 +4086,7 @@ you can use it but there could be issues with aligning columns of text</string>
   <tabstop>dictList</tabstop>
   <tabstop>radioButton_userDictionary_profile</tabstop>
   <tabstop>radioButton_userDictionary_common</tabstop>
+  <tabstop>spinBox_minimumLengthToSpellCheck</tabstop>
   <tabstop>fontComboBox</tabstop>
   <tabstop>mNoAntiAlias</tabstop>
   <tabstop>fontSize</tabstop>
@@ -4183,6 +4207,7 @@ you can use it but there could be issues with aligning columns of text</string>
   <tabstop>checkBox_mUSE_FORCE_LF_AFTER_PROMPT</tabstop>
   <tabstop>mFORCE_MXP_NEGOTIATION_OFF</tabstop>
   <tabstop>checkbox_noAutomaticUpdates</tabstop>
+  <tabstop>buttonPurgeMediaCache</tabstop>
   <tabstop>search_engine_combobox</tabstop>
   <tabstop>checkBox_showIconsOnMenus</tabstop>
   <tabstop>checkBox_debugShowAllCodepointProblems</tabstop>
@@ -4190,6 +4215,9 @@ you can use it but there could be issues with aligning columns of text</string>
   <tabstop>comboBox_store_passwords_in</tabstop>
   <tabstop>timeEdit_timerDebugOutputMinimumInterval</tabstop>
   <tabstop>doubleSpinBox_networkPacketTimeout</tabstop>
+  <tabstop>checkBox_announceIncomingText</tabstop>
+  <tabstop>comboBox_blankLinesBehaviour</tabstop>
+  <tabstop>comboBox_caretModeKey</tabstop>
  </tabstops>
  <resources>
   <include location="../mudlet.qrc"/>
