@@ -3,7 +3,7 @@
 
 /***************************************************************************
  *   Copyright (C) 2020 by Gustavo Sousa - gustavocms@gmail.com            *
- *   Copyright (C) 2020 by Stephen Lyons - slysven@virginmedia.com         *
+ *   Copyright (C) 2020, 2023 by Stephen Lyons - slysven@virginmedia.com   *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -24,25 +24,20 @@
 
 #include "pre_guard.h"
 #include <QMap>
-#include <QPair>
 #include <QString>
 #include <QStringList>
 #include "post_guard.h"
 
 #include <functional>
 
-class MxpTagAttribute : public QPair<QString, QString>
+class MxpTagAttribute : public std::pair<QString, QString>
 {
 public:
     typedef std::function<MxpTagAttribute(const MxpTagAttribute&)> Transformation;
 
     MxpTagAttribute();
-    explicit MxpTagAttribute(const QString&);
+    MxpTagAttribute(const QString&);
     MxpTagAttribute(const QString&, const QString&);
-
-    // Because derived classes may (in fact do) have real destructors we must
-    // declare AND define a virtual one in this, the base one:
-    virtual ~MxpTagAttribute();
 
     virtual const QString& getName() const { return first; }
 
@@ -84,7 +79,10 @@ public:
     virtual ~MxpNode() = default;
 
 protected:
-    explicit MxpNode(MxpNode::Type type) : mType(type) {}
+    explicit MxpNode(MxpNode::Type type)
+    : mType(type)
+    {}
+
     MxpNode::Type mType;
 };
 
@@ -93,11 +91,14 @@ class MxpTextNode : public MxpNode
     QString mContent;
 
 public:
-    explicit MxpTextNode(const QString& content) : MxpNode(MXP_NODE_TYPE_TEXT), mContent(QString(content)) {}
+    explicit MxpTextNode(const QString& content)
+    : MxpNode(MXP_NODE_TYPE_TEXT)
+    , mContent(QString(content))
+    {}
 
     inline const QString& getContent() const { return mContent; }
 
-    virtual QString toString() const { return mContent; }
+    virtual QString toString() const override { return mContent; }
 };
 
 class MxpTag : public MxpNode
@@ -105,7 +106,7 @@ class MxpTag : public MxpNode
     friend class TMxpTagParser;
 
 public:
-    virtual ~MxpTag() = default;
+    virtual ~MxpTag() override = default;
 
     inline const QString& getName() const { return name; }
 
@@ -118,13 +119,19 @@ public:
 protected:
     QString name;
 
-    explicit MxpTag(MxpNode::Type type, const QString& name) : MxpNode(type), name(name) {}
+    explicit MxpTag(MxpNode::Type type, const QString& name_)
+    : MxpNode(type)
+    , name(name_)
+    {}
 };
 
 class MxpEndTag : public MxpTag
 {
 public:
-    explicit MxpEndTag(const QString& name) : MxpTag(MXP_NODE_TYPE_END_TAG, name) {}
+    explicit MxpEndTag(const QString& name_)
+    : MxpTag(MXP_NODE_TYPE_END_TAG, name_)
+    {}
+
     QString toString() const override;
 };
 
@@ -135,9 +142,13 @@ class MxpStartTag : public MxpTag
     bool mIsEmpty;
 
 public:
-    explicit MxpStartTag(const QString& name) : MxpStartTag(name, QList<MxpTagAttribute>(), false) {}
+    explicit MxpStartTag(const QString& name_)
+    : MxpStartTag(name_, QList<MxpTagAttribute>(), false)
+    {}
 
-    MxpStartTag(const QString& name, const QList<MxpTagAttribute>& attributes, bool isEmpty) : MxpTag(MXP_NODE_TYPE_START_TAG, QString(name)), mIsEmpty(isEmpty)
+    MxpStartTag(const QString& name_, const QList<MxpTagAttribute>& attributes, bool isEmpty)
+    : MxpTag(MXP_NODE_TYPE_START_TAG, QString(name_))
+    , mIsEmpty(isEmpty)
     {
         for (const auto& attr : attributes) {
             mAttrsNames.append(attr.getName());

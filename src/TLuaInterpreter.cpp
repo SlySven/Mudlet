@@ -8028,7 +8028,7 @@ int TLuaInterpreter::isActive(lua_State* L)
             auto pT = host.getTimerUnit()->getTimer(id);
             cnt = (static_cast<bool>(pT) && pT->isActive()) ? 1 : 0;
         } else {
-            QMap<QString, TTimer*>::const_iterator it1 = host.getTimerUnit()->mLookupTable.constFind(nameOrId);
+            QMultiMap<QString, TTimer*>::const_iterator it1 = host.getTimerUnit()->mLookupTable.constFind(nameOrId);
             while (it1 != host.getTimerUnit()->mLookupTable.cend() && it1.key() == nameOrId) {
                 if (it1.value()->isActive()) {
                     ++cnt;
@@ -8042,7 +8042,7 @@ int TLuaInterpreter::isActive(lua_State* L)
             auto pT = host.getTriggerUnit()->getTrigger(id);
             cnt = (static_cast<bool>(pT) && pT->isActive()) ? 1 : 0;
         } else {
-            QMap<QString, TTrigger*>::const_iterator it1 = host.getTriggerUnit()->mLookupTable.constFind(nameOrId);
+            QMultiMap<QString, TTrigger*>::const_iterator it1 = host.getTriggerUnit()->mLookupTable.constFind(nameOrId);
             while (it1 != host.getTriggerUnit()->mLookupTable.cend() && it1.key() == nameOrId) {
                 if (it1.value()->isActive()) {
                     ++cnt;
@@ -8056,7 +8056,7 @@ int TLuaInterpreter::isActive(lua_State* L)
             auto pT = host.getAliasUnit()->getAlias(id);
             cnt = (static_cast<bool>(pT) && pT->isActive()) ? 1 : 0;
         } else {
-            QMap<QString, TAlias*>::const_iterator it1 = host.getAliasUnit()->mLookupTable.constFind(nameOrId);
+            QMultiMap<QString, TAlias*>::const_iterator it1 = host.getAliasUnit()->mLookupTable.constFind(nameOrId);
             while (it1 != host.getAliasUnit()->mLookupTable.cend() && it1.key() == nameOrId) {
                 if (it1.value()->isActive()) {
                     ++cnt;
@@ -8070,7 +8070,7 @@ int TLuaInterpreter::isActive(lua_State* L)
             auto pT = host.getKeyUnit()->getKey(id);
             cnt = (static_cast<bool>(pT) && pT->isActive()) ? 1 : 0;
         } else {
-            QMap<QString, TKey*>::const_iterator it1 = host.getKeyUnit()->mLookupTable.constFind(nameOrId);
+            QMultiMap<QString, TKey*>::const_iterator it1 = host.getKeyUnit()->mLookupTable.constFind(nameOrId);
             while (it1 != host.getKeyUnit()->mLookupTable.cend() && it1.key() == nameOrId) {
                 if (it1.value()->isActive()) {
                     ++cnt;
@@ -13656,7 +13656,7 @@ void TLuaInterpreter::parseJSON(QString& key, const QString& string_data, const 
                     case '\"' : initialText.replace(j, 2, '\"'); break;
                     case '\\' : initialText.replace(j, 2, '\\'); break;
                     case 'u': // handle lone code or pair of codes together
-                        u = initialText.midRef(j+2, 4).toUShort(0, 16);
+                        u = initialText.mid(j+2, 4).toUShort(0, 16);
                         if(u > 0xFFFD){
                             j += 5; // FFFE and FFFF are guaranteed to not be Unicode characters.  Skip it.
                         }
@@ -13671,7 +13671,7 @@ void TLuaInterpreter::parseJSON(QString& key, const QString& string_data, const 
                             // The regex above should ensure second code is DCxx-DFxx
                             QChar code[2];
                             code[0] = QChar(u);
-                            code[1] = QChar(initialText.midRef(j+8, 4).toUShort(0, 16));
+                            code[1] = QChar(initialText.mid(j+8, 4).toUShort(0, 16));
                             initialText.replace(j, 12, code, 2);
                             j++; // in this case we are adding 2 code points for the character
                         }
@@ -14387,42 +14387,56 @@ bool TLuaInterpreter::callLabelCallbackEvent(const int func, const QEvent* qE)
             }
             lua_setfield(L, -2, qsl("buttons").toUtf8().constData());
 
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+            auto globalPosition = qME->globalPos();
+            auto position = qME->pos();
+#else
+            auto globalPosition = qME->globalPosition().toPoint();
+            auto position = qME->position().toPoint();
+#endif
             // Push globalX()
-            lua_pushnumber(L, qME->globalX());
+            lua_pushnumber(L, globalPosition.x());
             lua_setfield(L, -2, qsl("globalX").toUtf8().constData());
 
             // Push globalY()
-            lua_pushnumber(L, qME->globalY());
+            lua_pushnumber(L, globalPosition.y());
             lua_setfield(L, -2, qsl("globalY").toUtf8().constData());
 
             // Push x()
-            lua_pushnumber(L, qME->x());
+            lua_pushnumber(L, position.x());
             lua_setfield(L, -2, qsl("x").toUtf8().constData());
 
             // Push y()
-            lua_pushnumber(L, qME->y());
+            lua_pushnumber(L, position.y());
             lua_setfield(L, -2, qsl("y").toUtf8().constData());
             return callReference(L, name, 1);
         }
         // These are QEvents
         case (QEvent::Enter): {
-            auto qME = static_cast<const QEnterEvent*>(qE);
             lua_newtable(L);
 
+            auto qME = static_cast<const QEnterEvent*>(qE);
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+            auto globalPosition = qME->globalPos();
+            auto position = qME->pos();
+#else
+            auto globalPosition = qME->globalPosition().toPoint();
+            auto position = qME->position().toPoint();
+#endif \
             // Push globalX()
-            lua_pushnumber(L, qME->globalX());
+            lua_pushnumber(L, globalPosition.x());
             lua_setfield(L, -2, qsl("globalX").toUtf8().constData());
 
             // Push globalY()
-            lua_pushnumber(L, qME->globalY());
+            lua_pushnumber(L, globalPosition.y());
             lua_setfield(L, -2, qsl("globalY").toUtf8().constData());
 
             // Push x()
-            lua_pushnumber(L, qME->x());
+            lua_pushnumber(L, position.x());
             lua_setfield(L, -2, qsl("x").toUtf8().constData());
 
             // Push y()
-            lua_pushnumber(L, qME->y());
+            lua_pushnumber(L, position.y());
             lua_setfield(L, -2, qsl("y").toUtf8().constData());
             return callReference(L, name, 1);
         }
@@ -14451,7 +14465,8 @@ bool TLuaInterpreter::callLabelCallbackEvent(const int func, const QEvent* qE)
             }
             lua_setfield(L, -2, qsl("buttons").toUtf8().constData());
 
-            auto globalPosition = qME->globalPosition();
+            auto globalPosition = qME->globalPosition().toPoint();
+            auto position = qME->position().toPoint();
             // Push globalX()
             lua_pushnumber(L, globalPosition.x());
             lua_setfield(L, -2, qsl("globalX").toUtf8().constData());
@@ -14459,8 +14474,6 @@ bool TLuaInterpreter::callLabelCallbackEvent(const int func, const QEvent* qE)
             // Push globalY()
             lua_pushnumber(L, globalPosition.y());
             lua_setfield(L, -2, qsl("globalY").toUtf8().constData());
-
-            auto position = qME->position();
 
             // Push x()
             lua_pushnumber(L, position.x());
@@ -14510,7 +14523,7 @@ bool TLuaInterpreter::callEventHandler(const QString& function, const TEvent& pE
     }
 
     // Lua is limited to ~50 arguments on a function
-    auto maxArguments = std::min(pE.mArgumentList.size(), LUA_FUNCTION_MAX_ARGS);
+    auto maxArguments = std::min(static_cast<int>(pE.mArgumentList.size()), LUA_FUNCTION_MAX_ARGS);
     for (int i = 0; i < maxArguments; i++) {
         switch (pE.mArgumentTypeList.at(i)) {
         case ARGUMENT_TYPE_NUMBER:
@@ -16004,7 +16017,9 @@ QString TLuaInterpreter::readScriptFile(const QString& path) const
     }
 
     QTextStream in(&file);
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     in.setCodec(QTextCodec::codecForName("UTF-8"));
+#endif
 
     /*
      * FIXME: Qt Documentation for this method reports:
@@ -17905,8 +17920,6 @@ int TLuaInterpreter::getScroll(lua_State* L)
 int TLuaInterpreter::getConfig(lua_State* L)
 {
     auto& host = getHostFromLua(L);
-    const bool currentHost = (mudlet::self()->mpCurrentActiveHost == &host);
-
     QString key = getVerifiedString(L, __func__, 1, "key");
     if (key.isEmpty()) {
         return warnArgumentValue(L, __func__, "you must provide key");

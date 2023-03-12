@@ -1176,7 +1176,11 @@ void TRoomDB::restoreAreaMap(QDataStream& ifs)
         if (!renamedMap.empty()) {
             detailText = qsl("%1\n").arg(tr("[  OK  ]  - The changes made are:\n"
                                             "(ID) \"old name\" ==> \"new name\""));
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
             QMapIterator<QString, QString> itRemappedNames = renamedMap;
+#else
+            QMultiMapIterator<QString, QString> itRemappedNames = renamedMap;
+#endif
             itRemappedNames.toBack();
             // Seems to look better if we iterate through backwards!
             while (itRemappedNames.hasPrevious()) {

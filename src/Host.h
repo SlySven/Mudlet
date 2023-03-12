@@ -434,8 +434,8 @@ public:
     bool mEnableMSP;
     bool mEnableMSDP;
     bool mServerMXPenabled;
-    bool mAskTlsAvailable;
-    int mMSSPTlsPort;
+    bool mAskTlsAvailable = true;
+    int mMSSPTlsPort = 0;
     QString mMSSPHostName;
 
     TMxpMudlet mMxpClient;
@@ -448,10 +448,10 @@ public:
     bool mFORCE_NO_COMPRESSION;
     bool mFORCE_SAVE_ON_EXIT;
 
-    bool mSslTsl;
-    bool mSslIgnoreExpired;
-    bool mSslIgnoreSelfSigned;
-    bool mSslIgnoreAll;
+    bool mSslTsl = false;
+    bool mSslIgnoreExpired = false;
+    bool mSslIgnoreSelfSigned = false;
+    bool mSslIgnoreAll = false;
 
     bool mUseProxy;
     QString mProxyAddress;

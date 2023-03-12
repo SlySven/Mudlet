@@ -63,7 +63,7 @@ include(../3rdparty/communi/communi.pri)
     QMAKE_CFLAGS_DEBUG += -O0
 }
 
-# enable C++17 for builds.
+# enable C++17 for builds, required for Qt6
 lessThan(QT_MAJOR_VERSION, 5)|if(lessThan(QT_MAJOR_VERSION,6):lessThan(QT_MINOR_VERSION, 12)) {
     QMAKE_CXXFLAGS += -std=c++17
 } else {
@@ -85,10 +85,16 @@ win32 {
 }
 
 QT += network uitools multimedia gui concurrent
-qtHaveModule(gamepad) {
-    QT += gamepad
-    !build_pass : message("Using Gamepad module")
+if(lessThan(QT_MAJOR_VERSION,6)) {
+    #gamepad has gone away in Qt 6
+    qtHaveModule(gamepad) {
+        QT += gamepad
+        !build_pass : message("Using Gamepad module")
+    }
+} else {
+    QT += core5compat
 }
+
 qtHaveModule(texttospeech) {
     QT += texttospeech
     !build_pass : message("Using TextToSpeech module")

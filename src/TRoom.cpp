@@ -727,7 +727,11 @@ void TRoom::restore(QDataStream& ifs, int roomID, int version)
         // from version 11-ish:
         QMultiMap<int, QString> oldSpecialExits;
         ifs >> oldSpecialExits;
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
         QMapIterator<int, QString> itOldSpecialExit(oldSpecialExits);
+#else
+        QMultiMapIterator<int, QString> itOldSpecialExit(oldSpecialExits);
+#endif
         while (itOldSpecialExit.hasNext()) {
             itOldSpecialExit.next();
             QString cmd{itOldSpecialExit.value()};

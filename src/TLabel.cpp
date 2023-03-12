@@ -162,7 +162,11 @@ void TLabel::leaveEvent(QEvent* event)
     }
 }
 
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
 void TLabel::enterEvent(QEvent* event)
+#else
+void TLabel::enterEvent(QEnterEvent* event)
+#endif
 {
     if (mpHost && mEnterFunction) {
         mpHost->getLuaInterpreter()->callLabelCallbackEvent(mEnterFunction, event);

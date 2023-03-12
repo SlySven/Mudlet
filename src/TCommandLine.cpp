@@ -670,7 +670,11 @@ void TCommandLine::mousePressEvent(QMouseEvent* event)
 {
 
     if (event->button() == Qt::RightButton) {
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
         auto popup = createStandardContextMenu(event->globalPos());
+#else
+        auto popup = createStandardContextMenu(event->globalPosition().toPoint());
+#endif
         if (mpHost->mEnableSpellCheck) {
             QTextCursor c = cursorForPosition(event->pos());
             c.select(QTextCursor::WordUnderCursor);
@@ -864,7 +868,11 @@ void TCommandLine::mousePressEvent(QMouseEvent* event)
         }
 
         mPopupPosition = event->pos();
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
         popup->popup(event->globalPos());
+#else
+        popup->popup(event->globalPosition().toPoint());
+#endif
         // The use of accept here is supposed to prevents this event from
         // reaching any parent widget - like the TConsole containing this
         // TCommandLine...

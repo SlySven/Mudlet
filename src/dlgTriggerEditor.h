@@ -176,10 +176,14 @@ public:
     void closeEvent(QCloseEvent* event) override;
     void focusInEvent(QFocusEvent*) override;
     void focusOutEvent(QFocusEvent*) override;
-    void enterEvent(QEvent* pE) override;
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+    void enterEvent(QEvent*) override;
+#else
+    void enterEvent(QEnterEvent*) override;
+#endif
     bool eventFilter(QObject*, QEvent* event) override;
     bool event(QEvent* event) override;
-    void resizeEvent(QResizeEvent *event) override;
+    void resizeEvent(QResizeEvent* event) override;
     void fillout_form();
     void showError(const QString&);
     void showWarning(const QString&);

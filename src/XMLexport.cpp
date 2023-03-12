@@ -192,7 +192,11 @@ void XMLexport::writeModuleXML(const QString& moduleName, const QString& fileNam
         helpPackage.append_child("helpURL").text().set("");
     }
     if (async) {
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
         auto future = QtConcurrent::run(this, &XMLexport::saveXml, fileName);
+#else
+        auto future = QtConcurrent::run(&XMLexport::saveXml, this, fileName);
+#endif
         auto watcher = new QFutureWatcher<bool>;
         QObject::connect(watcher, &QFutureWatcher<bool>::finished, mpHost, [=]() { mpHost->xmlSaved(fileName); });
         watcher->setFuture(future);
@@ -207,7 +211,11 @@ void XMLexport::exportHost(const QString& filename_pugi_xml)
 {
     auto mudletPackage = writeXmlHeader();
     writeHost(mpHost, mudletPackage);
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     auto future = QtConcurrent::run(this, &XMLexport::saveXml, filename_pugi_xml);
+#else
+    auto future = QtConcurrent::run(&XMLexport::saveXml, this, filename_pugi_xml);
+#endif
 
     auto watcher = new QFutureWatcher<bool>;
     QObject::connect(watcher, &QFutureWatcher<bool>::finished, mpHost, [=]() { mpHost->xmlSaved(qsl("profile")); });
@@ -353,7 +361,7 @@ bool XMLexport::saveXmlFile(QFile& file)
     return file.error() == QFile::NoError;
 }
 
-QString XMLexport::saveXml()
+QString XMLexport::saveXmlWorker()
 {
     std::stringstream saveStringStream(std::ios::out);
     std::string output;
@@ -765,7 +773,11 @@ bool XMLexport::exportProfile(const QString& exportFileName)
     auto mudletPackage = writeXmlHeader();
 
     if (writeGenericPackage(mpHost, mudletPackage)) {
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
         auto future = QtConcurrent::run(this, &XMLexport::saveXml, exportFileName);
+#else
+        auto future = QtConcurrent::run(&XMLexport::saveXml, this, exportFileName);
+#endif
         auto watcher = new QFutureWatcher<bool>;
         QObject::connect(watcher, &QFutureWatcher<bool>::finished, mpHost, [=]() { mpHost->xmlSaved(qsl("profile")); });
         watcher->setFuture(future);
@@ -837,7 +849,7 @@ void XMLexport::exportToClipboard(TTrigger* pT)
     auto mudletPackage = writeXmlHeader();
     auto triggerPackage = mudletPackage.append_child("TriggerPackage");
     writeTrigger(mpTrigger, triggerPackage);
-    auto xml = saveXml();
+    auto xml = saveXmlWorker();
 
     auto clipboard = QApplication::clipboard();
     clipboard->setText(xml, QClipboard::Clipboard);
@@ -920,7 +932,7 @@ void XMLexport::exportToClipboard(TAlias* pT)
     auto mudletPackage = writeXmlHeader();
     auto aliasPackage = mudletPackage.append_child("AliasPackage");
     writeAlias(mpAlias, aliasPackage);
-    auto xml = saveXml();
+    auto xml = saveXmlWorker();
 
     auto clipboard = QApplication::clipboard();
     clipboard->setText(xml, QClipboard::Clipboard);
@@ -973,7 +985,7 @@ void XMLexport::exportToClipboard(TAction* pT)
     auto mudletPackage = writeXmlHeader();
     auto actionPackage = mudletPackage.append_child("ActionPackage");
     writeAction(mpAction, actionPackage);
-    auto xml = saveXml();
+    auto xml = saveXmlWorker();
 
     auto clipboard = QApplication::clipboard();
     clipboard->setText(xml, QClipboard::Clipboard);
@@ -1042,7 +1054,7 @@ void XMLexport::exportToClipboard(TTimer* pT)
     auto mudletPackage = writeXmlHeader();
     auto timerPackage = mudletPackage.append_child("TimerPackage");
     writeTimer(mpTimer, timerPackage);
-    auto xml = saveXml();
+    auto xml = saveXmlWorker();
 
     auto clipboard = QApplication::clipboard();
     clipboard->setText(xml, QClipboard::Clipboard);
@@ -1098,7 +1110,7 @@ void XMLexport::exportToClipboard(TScript* pT)
     auto mudletPackage = writeXmlHeader();
     auto scriptPackage = mudletPackage.append_child("ScriptPackage");
     writeScript(mpScript, scriptPackage);
-    auto xml = saveXml();
+    auto xml = saveXmlWorker();
 
     auto clipboard = QApplication::clipboard();
     clipboard->setText(xml, QClipboard::Clipboard);
@@ -1153,7 +1165,7 @@ void XMLexport::exportToClipboard(TKey* pT)
     auto mudletPackage = writeXmlHeader();
     auto keyPackage = mudletPackage.append_child("KeyPackage");
     writeKey(mpKey, keyPackage);
-    auto xml = saveXml();
+    auto xml = saveXmlWorker();
 
     auto clipboard = QApplication::clipboard();
     clipboard->setText(xml, QClipboard::Clipboard);

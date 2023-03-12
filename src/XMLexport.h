@@ -112,7 +112,7 @@ private:
     bool saveXml(const QString&);
     pugi::xml_node writeXmlHeader();
     void sanitizeForQxml(std::string& output);
-    QString saveXml();
+    QString saveXmlWorker();
     QStringList remapAnsiToColorNumber(const QStringList&, const QList<int>&);
 };
 

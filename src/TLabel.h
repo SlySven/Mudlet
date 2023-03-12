@@ -60,7 +60,11 @@ public:
     void wheelEvent(QWheelEvent*) override;
     void mouseMoveEvent(QMouseEvent*) override;
     void leaveEvent(QEvent*) override;
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     void enterEvent(QEvent*) override;
+#else
+    void enterEvent(QEnterEvent*) override;
+#endif
     void resizeEvent(QResizeEvent* event) override;
     void setClickThrough(bool clickthrough);
 

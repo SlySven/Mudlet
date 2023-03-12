@@ -80,7 +80,7 @@ TConsole::TConsole(Host* pH, ConsoleType type, QWidget* parent)
 , mType(type)
 {
     auto ps = new QShortcut(this);
-    ps->setKey(Qt::CTRL + Qt::Key_W);
+    ps->setKey(Qt::CTRL | Qt::Key_W);
     ps->setContext(Qt::WidgetShortcut);
 
     if (mType == CentralDebugConsole) {
@@ -1837,7 +1837,7 @@ void TConsole::slot_searchBufferUp()
         mCurrentSearchResult = buffer.lineBuffer.size();
     } else {
         // make sure the line to search from does not exceed the buffer, which can grow and shrink dynamically
-        mCurrentSearchResult = std::min(mCurrentSearchResult, buffer.lineBuffer.size());
+        mCurrentSearchResult = std::min(mCurrentSearchResult, static_cast<int>(buffer.lineBuffer.size()));
     }
     if (buffer.lineBuffer.empty()) {
         return;
@@ -1936,11 +1936,16 @@ void TConsole::dragEnterEvent(QDragEnterEvent* e)
 //https://amin-ahmadi.com/2016/01/04/qt-drag-drop-files-images/
 void TConsole::dropEvent(QDropEvent* e)
 {
-    for (const auto& url : e->mimeData()->urls()) {
+    auto urls = e->mimeData()->urls();
+    for (const auto& url : urls) {
         QString fname = url.toLocalFile();
         QFileInfo info(fname);
         if (info.exists()) {
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
             QPoint pos = e->pos();
+#else
+            QPoint pos = e->position().toPoint();
+#endif
             TEvent mudletEvent{};
             mudletEvent.mArgumentList.append(QLatin1String("sysDropEvent"));
             mudletEvent.mArgumentList.append(fname);
@@ -1959,7 +1964,11 @@ void TConsole::dropEvent(QDropEvent* e)
     }
     if (e->mimeData()->hasText()) {
         if (QUrl url(e->mimeData()->text()); url.isValid()) {
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
             QPoint pos = e->pos();
+#else
+            QPoint pos = e->position().toPoint();
+#endif
             TEvent mudletEvent{};
             mudletEvent.mArgumentList.append(QLatin1String("sysDropUrlEvent"));
             mudletEvent.mArgumentList.append(url.toString());
@@ -2014,8 +2023,13 @@ void TConsole::raiseMudletMousePressOrReleaseEvent(QMouseEvent* event, const boo
     case Qt::ExtraButton24: mudletEvent.mArgumentList.append(QString::number(27));  break;
     default:                mudletEvent.mArgumentList.append(QString::number(0));
     }
-    mudletEvent.mArgumentList.append(QString::number(event->x()));
-    mudletEvent.mArgumentList.append(QString::number(event->y()));
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+    QPoint pos = event->pos();
+#else
+    QPoint pos = event->position().toPoint();
+#endif
+    mudletEvent.mArgumentList.append(QString::number(pos.x()));
+    mudletEvent.mArgumentList.append(QString::number(pos.y()));
     mudletEvent.mArgumentList.append(mConsoleName);
     mudletEvent.mArgumentTypeList.append(ARGUMENT_TYPE_STRING);
     mudletEvent.mArgumentTypeList.append(ARGUMENT_TYPE_NUMBER);

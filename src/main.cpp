@@ -38,7 +38,6 @@
 #include <QSettings>
 #include <QSplashScreen>
 #include <QStringList>
-#include <QStringListIterator>
 #include <QTranslator>
 #include "post_guard.h"
 #include "AltFocusMenuBarDisable.h"
@@ -131,7 +130,11 @@ QTranslator* loadTranslationsForCommandLine()
     // If we allow the translations to be outside of the resource file inside
     // the application executable then this will have to be revised to handle
     // it:
-    pMudletTranslator->load(userLocale, qsl("mudlet"), QString("_"), qsl(":/lang"), qsl(".qm"));
+    bool isOk = pMudletTranslator->load(userLocale, qsl("mudlet"), QString("_"), qsl(":/lang"), qsl(".qm"));
+    if (!isOk) {
+        return nullptr;
+    }
+
     QCoreApplication::installTranslator(pMudletTranslator);
     return pMudletTranslator;
 }
@@ -179,7 +182,10 @@ int main(int argc, char* argv[])
 #endif // _MSC_VER && _DEBUG
     spDebugConsole = nullptr;
 
-#if defined (Q_OS_UNIX)
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+    // This setting is redudant (and deprecated) as it is always on in Qt 6.
+    // It was previously only set here for Q_OS_UNIX but we were then setting
+    // it for ALL OSes in the mudlet class constructor:
     QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
 #endif
 

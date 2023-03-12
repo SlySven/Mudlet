@@ -209,12 +209,14 @@ void TMainConsole::toggleLogging(bool isMessageEnabled)
             mLogFile.open(QIODevice::Append);
         }
         mLogStream.setDevice(&mLogFile);
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
         // We have to set a codec here to convert the QString based QTextStream
         // encoding (from UTF-16) to UTF-8 - by default a local 8-Bit one would
         // be used, which is problematic on Windows for non-ASCII (or Latin1?)
         // characters:
         QTextCodec* pLogCodec = QTextCodec::codecForName("UTF-8");
         mLogStream.setCodec(pLogCodec);
+#endif
         if (isMessageEnabled) {
             QString message = qsl("%1\n").arg(tr("Logging has started. Log file is %1").arg(mLogFile.fileName()));
             printSystemMessage(message);

@@ -523,10 +523,10 @@ dlgTriggerEditor::dlgTriggerEditor(Host* pH)
     mProfileSaveAsAction->setEnabled(true);
     connect(mProfileSaveAsAction, &QAction::triggered, this, &dlgTriggerEditor::slot_profileSaveAsAction);
 
-    auto *nextSectionShortcut = new QShortcut(QKeySequence(Qt::CTRL + Qt::Key_Tab), this);
+    auto *nextSectionShortcut = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_Tab), this);
     QObject::connect(nextSectionShortcut, &QShortcut::activated, this, &dlgTriggerEditor::slot_nextSection);
 
-    QShortcut *previousSectionShortcut = new QShortcut(QKeySequence(Qt::CTRL + Qt::SHIFT + Qt::Key_Tab), this);
+    QShortcut *previousSectionShortcut = new QShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_Tab), this);
     QObject::connect(previousSectionShortcut, &QShortcut::activated, this, &dlgTriggerEditor::slot_previousSection);
 
     QShortcut *activateMainWindowAction = new QShortcut(QKeySequence((Qt::ALT | Qt::Key_E)), this);
@@ -6634,7 +6634,7 @@ void dlgTriggerEditor::saveOpenChanges()
     }
 }
 
-void dlgTriggerEditor::timerEvent(QTimerEvent *event)
+void dlgTriggerEditor::timerEvent(QTimerEvent* event)
 {
     Q_UNUSED(event);
 
@@ -6648,7 +6648,11 @@ void dlgTriggerEditor::autoSave()
     mpHost->saveProfile(QString(), qsl("autosave"));
 }
 
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
 void dlgTriggerEditor::enterEvent(QEvent* pE)
+#else
+void dlgTriggerEditor::enterEvent(QEnterEvent* pE)
+#endif
 {
     Q_UNUSED(pE)
     if (mNeedUpdateData) {

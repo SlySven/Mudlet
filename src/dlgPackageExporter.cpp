@@ -823,7 +823,10 @@ void dlgPackageExporter::writeConfigFile(const QString& stagingDirName, const QF
     QFile configFile(luaConfig);
     if (configFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
         QTextStream out(&configFile);
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+        // Qt6 does not have a QTextStream::setCodec(...) method, but it uses UTF-8 by default
         out.setCodec(QTextCodec::codecForName("UTF-8"));
+#endif
         out << mPackageConfig;
         out.flush();
         configFile.close();

@@ -127,7 +127,11 @@ QList<int> TArea::getCollisionNodes()
         while (it2.hasNext()) {
             it2.next();
             QMultiMap<int, int> y_val = it2.value();
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
             QMapIterator<int, int> it3(y_val);
+#else
+            QMultiMapIterator<int, int> it3(y_val);
+#endif
             QList<int> z_coordinates;
             while (it3.hasNext()) {
                 it3.next();
@@ -518,7 +522,11 @@ const QMultiMap<int, QPair<QString, int>> TArea::getAreaExitRoomData() const
     QMultiMap<int, QPair<QString, int>> results;
     QSet<int> roomsWithOtherAreaSpecialExits;
 
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     QMapIterator<int, QPair<int, int>> itAreaExit = mAreaExits;
+#else
+    QMultiMapIterator<int, QPair<int, int>> itAreaExit = mAreaExits;
+#endif
     // First parse the normal exits and also find the rooms where there is at
     // least one special area exit
     while (itAreaExit.hasNext()) {

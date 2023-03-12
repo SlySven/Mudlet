@@ -2055,8 +2055,13 @@ void GLWidget::mousePressEvent(QMouseEvent* event)
         return;
     }
     if (event->buttons() & Qt::LeftButton) {
-        int x = event->x();
-        int y = height() - event->y(); // the opengl origin is at bottom left
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+        auto eventPos = event->pos();
+#else
+        auto eventPos = event->position().toPoint();
+#endif
+        int x = eventPos.x();
+        int y = height() - eventPos.y(); // the opengl origin is at bottom left
         GLuint buff[16] = {0};
         GLint hits;
         GLint view[4];
@@ -2132,8 +2137,13 @@ void GLWidget::mouseMoveEvent(QMouseEvent* event)
         return;
     }
     if (mPanMode) {
-        int x = event->x();
-        int y = height() - event->y(); // the opengl origin is at bottom left
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+        auto eventPos = event->pos();
+#else
+        auto eventPos = event->position().toPoint();
+#endif
+        int x = eventPos.x();
+        int y = height() - eventPos.y(); // the opengl origin is at bottom left
         if ((mPanXStart - x) > 1) {
             slot_shiftRight();
             mPanXStart = x;
@@ -2163,10 +2173,10 @@ void GLWidget::wheelEvent(QWheelEvent* e)
     int yDelta = qRound(e->angleDelta().y() / (8.0 * 15.0));
     bool used = false;
     if (yDelta) {
-        if (abs(mScale) < 0.3) {
-            mScale += 0.01 * yDelta;
+        if (abs(mScale) < 0.3f) {
+            mScale += 0.01f * static_cast<float>(yDelta);
         } else {
-            mScale += 0.03 * yDelta;
+            mScale += 0.03f * static_cast<float>(yDelta);
         }
         makeCurrent();
         resizeGL(width(), height());

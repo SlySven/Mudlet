@@ -1,6 +1,6 @@
 /***************************************************************************
  *   Copyright (C) 2020 by Gustavo Sousa - gustavocms@gmail.com            *
- *   Copyright (C) 2020 by Stephen Lyons - slysven@virginmedia.com         *
+ *   Copyright (C) 2020, 2023 by Stephen Lyons - slysven@virginmedia.com   *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -22,18 +22,15 @@
 #include "TMxpTagParser.h"
 
 MxpTagAttribute::MxpTagAttribute(const QString& name, const QString& value)
-: QPair(name, value)
+: pair(name, value)
 {}
 
 MxpTagAttribute::MxpTagAttribute(const QString& name)
-: MxpTagAttribute(name, QString())
+: pair(name, QString())
 {}
 
 MxpTagAttribute::MxpTagAttribute()
-: QPair()
-{}
-
-MxpTagAttribute::~MxpTagAttribute()
+: pair(QString(), QString())
 {}
 
 const MxpTagAttribute& MxpStartTag::getAttribute(int attrIndex) const
@@ -120,7 +117,7 @@ MxpStartTag MxpStartTag::transform(const MxpTagAttribute::Transformation& transf
 {
     QList<MxpTagAttribute> newAttrs;
     for (const auto& attr : mAttrsNames) {
-        newAttrs.append(transformation(mAttrsMap[attr.toUpper()]));
+        newAttrs.append(transformation(mAttrsMap.value(attr.toUpper())));
     }
 
     return MxpStartTag(name, newAttrs, mIsEmpty);
