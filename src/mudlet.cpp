@@ -4671,7 +4671,7 @@ void mudlet::onlyShowProfiles(const QStringList& predefinedProfiles)
         // Only do it in the first half of any minute:
 #else
     if (bool layEasterEgg = (now.date().month() == 4
-                        && now.date().day() == 1) {
+                        && now.date().day() == 1); layEasterEgg) {
 #endif // ! DEBUG_EASTER_EGGS
         // clang-format on
         // Set to one more than the highest number Mudlet_splashscreen_other_NN.png:
