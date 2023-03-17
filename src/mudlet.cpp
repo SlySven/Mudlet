@@ -4677,8 +4677,8 @@ void mudlet::onlyShowProfiles(const QStringList& predefinedProfiles)
         // Set to one more than the highest number Mudlet_splashscreen_other_NN.png:
         auto egg = QRandomGenerator::global()->bounded(23);
         if (egg) {
-            QString eggs = qsl("%1").arg(egg, 2, 10, QLatin1Char('0')); // left-padding
-            return QImage(qsl(":/splash/Mudlet_splashscreen_other_%1.png").arg(eggs));
+            auto eggFileName = qsl(":/splash/Mudlet_splashscreen_other_%1.png").arg(QString::number(egg, 2, 10, QLatin1Char('0'))));
+            return QImage(eggFileName);
         } else {
             // For the zeroth case just rotate the picture 180 degrees:
             QImage original(mudlet::scmIsReleaseVersion
