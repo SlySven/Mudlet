@@ -2392,8 +2392,12 @@ void cTelnet::postMessage(QString msg)
                 if (!body.empty()) {
                     mpHost->mpConsole->print(body.join('\n').append('\n'), QColor(255, 255, 50), mpHost->mBgColor); // Bright Yellow
                 }
-            //: Keep the capisalisation, the translated text at 7 letters max so it aligns nicely
-            } else if (prefix.contains(tr("LUA")) || prefix.contains(QLatin1String("LUA"))) {
+                messageStack.removeFirst();
+                continue;
+            }
+
+            //: Keep the capitalisation, the translated text at 7 letters max so it aligns nicely
+            if (prefix.contains(tr("LUA")) || prefix.contains(QLatin1String("LUA"))) {
                 mpHost->mpConsole->print(prefix, QColor(80, 160, 255), mpHost->mBgColor);                    // Light blue
                 mpHost->mpConsole->print(firstLineTail.append('\n'), QColor(50, 200, 50), mpHost->mBgColor); // Light green
                 for (int _i = 0; _i < body.size(); ++_i) {
@@ -2404,8 +2408,12 @@ void cTelnet::postMessage(QString msg)
                 if (!body.empty()) {
                     mpHost->mpConsole->print(body.join('\n').append('\n'), QColor(200, 50, 50), mpHost->mBgColor); // Red
                 }
-            //: Keep the capisalisation, the translated text at 7 letters max so it aligns nicely
-            } else if (prefix.contains(tr("WARN")) || prefix.contains(QLatin1String("WARN"))) {
+                messageStack.removeFirst();
+                continue;
+            }
+
+            //: Keep the capitalisation, the translated text at 7 letters max so it aligns nicely
+            if (prefix.contains(tr("WARN")) || prefix.contains(QLatin1String("WARN"))) {
                 mpHost->mpConsole->print(prefix, QColor(0, 150, 190), mpHost->mBgColor);                     // Cyan
                 mpHost->mpConsole->print(firstLineTail.append('\n'), QColor(190, 150, 0), mpHost->mBgColor); // Orange
                 for (int _i = 0; _i < body.size(); ++_i) {
@@ -2416,8 +2424,12 @@ void cTelnet::postMessage(QString msg)
                 if (!body.empty()) {
                     mpHost->mpConsole->print(body.join('\n').append('\n'), QColor(190, 150, 0), mpHost->mBgColor);
                 }
-            //: Keep the capisalisation, the translated text at 7 letters max so it aligns nicely
-            } else if (prefix.contains(tr("ALERT")) || prefix.contains(QLatin1String("ALERT"))) {
+                messageStack.removeFirst();
+                continue;
+            }
+
+            //: Keep the capitalisation, the translated text at 7 letters max so it aligns nicely
+            if (prefix.contains(tr("ALERT")) || prefix.contains(QLatin1String("ALERT"))) {
                 mpHost->mpConsole->print(prefix, QColor(190, 100, 50), mpHost->mBgColor);                     // Orange-ish
                 mpHost->mpConsole->print(firstLineTail.append('\n'), QColor(190, 190, 50), mpHost->mBgColor); // Yellow
                 for (int _i = 0; _i < body.size(); ++_i) {
@@ -2428,8 +2440,12 @@ void cTelnet::postMessage(QString msg)
                 if (!body.empty()) {
                     mpHost->mpConsole->print(body.join('\n').append('\n'), QColor(190, 190, 50), mpHost->mBgColor); // Yellow
                 }
-            //: Keep the capisalisation, the translated text at 7 letters max so it aligns nicely
-            } else if (prefix.contains(tr("INFO")) || prefix.contains(QLatin1String("INFO"))) {
+                messageStack.removeFirst();
+                continue;
+            }
+
+            //: Keep the capitalisation, the translated text at 7 letters max so it aligns nicely
+            if (prefix.contains(tr("INFO")) || prefix.contains(QLatin1String("INFO"))) {
                 mpHost->mpConsole->print(prefix, QColor(0, 150, 190), mpHost->mBgColor);                   // Cyan
                 mpHost->mpConsole->print(firstLineTail.append('\n'), QColor(0, 160, 0), mpHost->mBgColor); // Light Green
                 for (int _i = 0; _i < body.size(); ++_i) {
@@ -2440,8 +2456,12 @@ void cTelnet::postMessage(QString msg)
                 if (!body.empty()) {
                     mpHost->mpConsole->print(body.join('\n').append('\n'), QColor(0, 160, 0), mpHost->mBgColor); // Light Green
                 }
-            //: Keep the capisalisation, the translated text at 7 letters max so it aligns nicely
-            } else if (prefix.contains(tr("OK")) || prefix.contains(QLatin1String("OK"))) {
+                messageStack.removeFirst();
+                continue;
+            }
+
+            //: Keep the capitalisation, the translated text at 7 letters max so it aligns nicely
+            if (prefix.contains(tr("OK")) || prefix.contains(QLatin1String("OK"))) {
                 mpHost->mpConsole->print(prefix, QColor(0, 160, 0), mpHost->mBgColor);                        // Light Green
                 mpHost->mpConsole->print(firstLineTail.append('\n'), QColor(190, 100, 50), mpHost->mBgColor); // Orange-ish
                 for (int _i = 0; _i < body.size(); ++_i) {
@@ -2452,28 +2472,32 @@ void cTelnet::postMessage(QString msg)
                 if (!body.empty()) {
                     mpHost->mpConsole->print(body.join('\n').append('\n'), QColor(190, 100, 50), mpHost->mBgColor); // Orange-ish
                 }
-            } else {                                                                                        // Unrecognised but still in a "[ something ] -  message..." format
-                mpHost->mpConsole->print(prefix, QColor(190, 50, 50), mpHost->mBgColor);                    // Foreground red, background bright grey
-                mpHost->mpConsole->print(firstLineTail.append('\n'), QColor(50, 50, 50), mpHost->mBgColor); //Foreground dark grey, background bright grey
-                for (int _i = 0; _i < body.size(); ++_i) {
-                    QString temp = body.at(_i);
-                    temp.replace('\t', QLatin1String("        "));
-                    body[_i] = temp.rightJustified(temp.length() + prefixLength);
-                }
-                if (!body.empty()) {
-                    mpHost->mpConsole->print(body.join('\n').append('\n'), QColor(50, 50, 50), mpHost->mBgColor); //Foreground dark grey, background bright grey
-                }
+                messageStack.removeFirst();
+                continue;
             }
-        } else {                                                                                             // No prefix found
+
+            // else unrecognised but still in a "[ something ] -  message..." format
+            mpHost->mpConsole->print(prefix, QColor(190, 50, 50), mpHost->mBgColor);                    // Foreground red, background bright grey
+            mpHost->mpConsole->print(firstLineTail.append('\n'), QColor(50, 50, 50), mpHost->mBgColor); //Foreground dark grey, background bright grey
+            for (int _i = 0; _i < body.size(); ++_i) {
+                QString temp = body.at(_i);
+                temp.replace('\t', QLatin1String("        "));
+                body[_i] = temp.rightJustified(temp.length() + prefixLength);
+            }
+            if (!body.empty()) {
+                mpHost->mpConsole->print(body.join('\n').append('\n'), QColor(50, 50, 50), mpHost->mBgColor); //Foreground dark grey, background bright grey
+            }
+
+        } else {
+            // No prefix found
             mpHost->mpConsole->print(body.join('\n').append('\n'), QColor(190, 190, 190), mpHost->mBgColor); //Foreground bright grey
         }
+
         messageStack.removeFirst();
     }
 }
 
 //forward data for further processing
-
-
 void cTelnet::gotPrompt(std::string& mud_data)
 {
     mpPostingTimer->stop();
