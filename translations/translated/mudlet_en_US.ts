@@ -35,7 +35,7 @@
 <context>
     <name>ModernGLWidget</name>
     <message numerus="yes">
-        <location filename="../../src/modern_glwidget.cpp" line="251"/>
+        <location filename="../../src/modern_glwidget.cpp" line="255"/>
         <source>You have a map loaded (%n room(s)), but Mudlet does not know where you are at the moment.</source>
         <translation>
             <numerusform>You have a map loaded (%n room), but Mudlet does not know where you are at the moment.</numerusform>
@@ -46,7 +46,7 @@
 <context>
     <name>T2DMap</name>
     <message numerus="yes">
-        <location filename="../../src/T2DMap.cpp" line="1719"/>
+        <location filename="../../src/T2DMap.cpp" line="1723"/>
         <source>You have a map loaded (%n room(s)), but Mudlet does not know where you are at the moment.</source>
         <translation>
             <numerusform>You have a map loaded (%n room), but Mudlet does not know where you are at the moment.</numerusform>
@@ -103,7 +103,7 @@ be in these areas...</numerusform>
 <context>
     <name>TTrigger</name>
     <message numerus="yes">
-        <location filename="../../src/TTrigger.cpp" line="1115"/>
+        <location filename="../../src/TTrigger.cpp" line="1122"/>
         <source>Trigger name=%1 will fire %n more time(s).</source>
         <translation>
             <numerusform>Trigger name=%1 will fire %n more time.</numerusform>
@@ -156,18 +156,27 @@ be in these areas...</numerusform>
         </translation>
     </message>
     <message numerus="yes">
-        <location filename="../../src/dlgPackageManager.cpp" line="654"/>
-        <source>Install (%n)</source>
-        <extracomment>Message on button in package manager to install one or more (%n is the count of) selected package(s).</extracomment>
+        <location filename="../../src/dlgPackageManager.cpp" line="799"/>
+        <source>Update (%n)</source>
+        <extracomment>Message on button in package manager to update multiple (%n is the count of) selected packages.</extracomment>
         <translation type="unfinished">
             <numerusform></numerusform>
             <numerusform></numerusform>
         </translation>
     </message>
     <message numerus="yes">
-        <location filename="../../src/dlgPackageManager.cpp" line="676"/>
+        <location filename="../../src/dlgPackageManager.cpp" line="809"/>
+        <source>Install (%n)</source>
+        <extracomment>Message on button in package manager to install multiple (%n is the count of) selected packages.</extracomment>
+        <translation type="unfinished">
+            <numerusform></numerusform>
+            <numerusform></numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../../src/dlgPackageManager.cpp" line="834"/>
         <source>Remove (%n)</source>
-        <extracomment>Message on button in package manager to remove one or more (%n is the count of) selected package(s).</extracomment>
+        <extracomment>Message on button in package manager to remove multiple (%n is the count of) selected packages.</extracomment>
         <translation type="unfinished">
             <numerusform></numerusform>
             <numerusform></numerusform>
@@ -199,16 +208,27 @@ be in these areas...</numerusform>
 <context>
     <name>dlgRoomProperties</name>
     <message numerus="yes">
-        <location filename="../../src/dlgRoomProperties.cpp" line="174"/>
+        <location filename="../../src/dlgRoomProperties.cpp" line="195"/>
         <source>Lock room(s), so it/they will never be used for speedwalking</source>
         <comment>This text will be shown at a checkbox, where you can set/unset a number of room&apos;s lock.</comment>
+        <extracomment>room properties dialog, setting lock status</extracomment>
         <translation>
             <numerusform>Lock room, so it will never be used for speedwalking</numerusform>
             <numerusform>Lock rooms, so they will never be used for speedwalking</numerusform>
         </translation>
     </message>
     <message numerus="yes">
-        <location filename="../../src/dlgRoomProperties.cpp" line="191"/>
+        <location filename="../../src/dlgRoomProperties.cpp" line="205"/>
+        <source>Hide room(s) from the map display</source>
+        <comment>This text will be shown at a checkbox, where you can set/unset a number of room&apos;s hidden status.</comment>
+        <extracomment>room properties dialog, setting hidden status</extracomment>
+        <translation type="unfinished">
+            <numerusform></numerusform>
+            <numerusform></numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../../src/dlgRoomProperties.cpp" line="222"/>
         <source>Enter a new room weight to use as the travel time for all of the %n selected room(s). This will be used for calculating the best path. The minimum and default is 1.</source>
         <comment>%n is the total number of rooms involved.</comment>
         <translation>
@@ -217,7 +237,7 @@ be in these areas...</numerusform>
         </translation>
     </message>
     <message numerus="yes">
-        <location filename="../../src/dlgRoomProperties.cpp" line="197"/>
+        <location filename="../../src/dlgRoomProperties.cpp" line="228"/>
         <source>To change the room weight for all of the %n selected room(s), please choose:
  • an existing room weight from the list below (sorted by most commonly used first)
  • enter a new positive integer value to use as a new weight. The default is 1.</source>
@@ -232,7 +252,7 @@ be in these areas...</numerusform>
         </translation>
     </message>
     <message numerus="yes">
-        <location filename="../../src/dlgRoomProperties.cpp" line="221"/>
+        <location filename="../../src/dlgRoomProperties.cpp" line="252"/>
         <source>Enter one or more characters to set a new symbol for %n room(s).  Clear to unset.</source>
         <comment>%n is the total number of rooms involved.</comment>
         <extracomment>room properties dialog, setting symbols</extracomment>
@@ -243,7 +263,7 @@ be in these areas...</numerusform>
         </translation>
     </message>
     <message numerus="yes">
-        <location filename="../../src/dlgRoomProperties.cpp" line="227"/>
+        <location filename="../../src/dlgRoomProperties.cpp" line="258"/>
         <source>To set the symbol for all %n room(s), please choose:
  • an existing symbol from the list,
  • enter one or more characters to set a new symbol,
@@ -291,7 +311,7 @@ be in these areas...</numerusform>
 <context>
     <name>mudlet</name>
     <message numerus="yes">
-        <location filename="../../src/mudlet.cpp" line="5363"/>
+        <location filename="../../src/mudlet.cpp" line="5365"/>
         <source>&lt;p&gt;About Mudlet&lt;/p&gt;&lt;p&gt;&lt;i&gt;%n update(s) is/are now available!&lt;/i&gt;&lt;p&gt;</source>
         <extracomment>This is the tooltip text for the &apos;About&apos; Mudlet main toolbar button when it has been changed by adding a menu which now contains the original &apos;About Mudlet&apos; action and a new one to access the manual update process</extracomment>
         <translation>
@@ -300,7 +320,7 @@ be in these areas...</numerusform>
         </translation>
     </message>
     <message numerus="yes">
-        <location filename="../../src/mudlet.cpp" line="5381"/>
+        <location filename="../../src/mudlet.cpp" line="5383"/>
         <source>Review %n update(s)...</source>
         <extracomment>Review update(s) menu item, %n is the count of how many updates are available</extracomment>
         <translation>
@@ -309,7 +329,7 @@ be in these areas...</numerusform>
         </translation>
     </message>
     <message numerus="yes">
-        <location filename="../../src/mudlet.cpp" line="5383"/>
+        <location filename="../../src/mudlet.cpp" line="5385"/>
         <source>Review the update(s) available...</source>
         <extracomment>Tool-tip for review update(s) menu item, given that the count of how many updates are available is already shown in the menu, the %n parameter that is that number need not be used here</extracomment>
         <translation>
